@@ -62,7 +62,7 @@ Three sources work out of the box with zero configuration.
 
 ```bash
 # Clone and install
-git clone <repo-url> ~/projects/pulse
+git clone https://github.com/itsXactlY/pulse-hermes ~/projects/pulse
 cd ~/projects/pulse
 bash install.sh
 
