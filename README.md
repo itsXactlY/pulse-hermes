@@ -284,6 +284,11 @@ All of these are straightforward extensions. The hard part — the pipeline arch
 9. **Cron Integration** — Scheduled topic monitoring
 10. **Self-Improvement** — Hermes learns which sources/topics perform best
 
+## See Also
+
+- [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill) — The original that inspired this. 14 sources, LLM planner, setup wizard. The real deal.
+- [itsXactlY/neural-memory](https://github.com/itsXactlY/neural-memory) — Neural Memory system for persistent, semantic memory across sessions. PULSE could use this for clustering and cross-session research history.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
