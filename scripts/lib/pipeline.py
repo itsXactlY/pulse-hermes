@@ -17,6 +17,7 @@ from . import (
     config as _config,
     dates as _dates,
     dedupe as _dedupe,
+    filter as _filter,
     fusion as _fusion,
     github as _github,
     hackernews as _hackernews,
@@ -118,6 +119,7 @@ def _normalize_score_dedupe(
     items = _normalize.normalize_items(source, raw_items, from_date, to_date)
     items = _score.score_items(items, topic, from_date, to_date, max_days)
     items = _dedupe.deduplicate(items)
+    items = _filter.filter_items(items)  # Filter out blocked content
     return items
 
 
@@ -240,6 +242,9 @@ def run(
         plan.source_weights,
         subquery_weights,
     )
+
+    # Filter out blocked content after fusion
+    candidates = _filter.filter_items(candidates)
 
     # Apply pool limit
     candidates = candidates[:settings["pool_limit"]]

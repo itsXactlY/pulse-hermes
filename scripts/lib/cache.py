@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from . import log
+from . import log, raw_filter
 
 CACHE_DIR = Path.home() / ".cache" / "pulse"
 CACHE_DB = CACHE_DIR / "cache.db"
@@ -96,7 +96,9 @@ def get(
         conn.commit()
 
         _source_log(f"Cache HIT: {source}/{query[:30]}")
-        return json.loads(data_str)
+        data = json.loads(data_str)
+        # Filter out blocked content from cached data
+        return raw_filter.filter_raw_items(data)
 
     except (sqlite3.Error, json.JSONDecodeError) as e:
         _source_log(f"Cache read error: {e}")
