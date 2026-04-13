@@ -1,140 +1,121 @@
-# pulse v3.0.0 - Hermes Edition
+---
+name: pulse
+version: "0.0.1"
+description: "Multi-source social search engine scored by real engagement. Research Reddit, HN, Polymarket, GitHub, web, and news - ranked by what people actually engage with."
+argument-hint: 'pulse AI video tools, pulse best noise cancelling headphones'
+homepage: https://github.com/itsXactlY/pulse
+author: hermes-agent
+license: MIT
+user-invocable: true
+metadata:
+  hermes:
+    tags:
+      - research
+      - deep-research
+      - reddit
+      - hackernews
+      - polymarket
+      - github
+      - news
+      - trends
+      - social-media
+      - analysis
+      - web-search
+      - multi-source
+      - citations
+---
+
+# PULSE v0.0.1 — The Pulse of the Internet
 
 Research ANY topic across Reddit, Hacker News, Polymarket, GitHub, web, and news.
-Surface what people are actually discussing, recommending, betting on, and debating right now.
+Scores by real engagement — upvotes, points, volume, stars. Not SEO. Not editors.
 
-## What It Does
+> **⚠️ PROOF OF CONCEPT** — Hermes should evolve this into a fully autonomous research system. The core engine (pipeline, RRF fusion, clustering) is done. What's missing: LLM planner, X/Twitter, YouTube, caching, persistent store, semantic clustering with Neural Memory.
 
-Scores by real engagement: Reddit upvotes, HN points, Polymarket volume backed by real money, GitHub stars. Not SEO. Not editors. What people actually engage with.
+## Sources
 
-| Source | What it tells you |
-|--------|-------------------|
-| **Reddit** | The unfiltered take. Top comments with upvote counts, free via public JSON. |
-| **Hacker News** | Developer consensus. Points and comments. Where technical people argue. |
-| **Polymarket** | Odds backed by real money. Not opinions, actual betting markets. |
-| **GitHub** | PR velocity, top repos by stars, issues, releases. |
-| **Web** | Editorial coverage, blog posts, news articles. |
-| **News** | NewsAPI articles from major publications. |
+| Source | What It Tells You | Auth Required |
+|--------|-------------------|:-------------:|
+| **Reddit** | Unfiltered community takes, top comments with upvote counts | No |
+| **Hacker News** | Developer consensus, points and comments | No |
+| **Polymarket** | Odds backed by real money and insider information | No |
+| **GitHub** | Repos, issues, PRs, star velocity | Token (optional) |
+| **Web** | Editorial coverage, blog posts (Brave/Serper/Exa) | API key |
+| **News** | NewsAPI articles from major publications | API key |
 
-## How To Use
-
-Just ask: "pulse [topic]"
-
-The engine automatically:
-1. Detects your intent (prediction? comparison? person research?)
-2. Selects the best sources for your topic
-3. Searches all sources in parallel
-4. Normalizes, scores, and deduplicates
-5. Clusters related results
-6. Ranks by weighted Reciprocal Rank Fusion
-7. Renders a ranked briefing
-
-## CLI Reference
+## Usage
 
 ```bash
-python3 ~/.hermes/skills/pulse/scripts/pulse.py <topic> [options]
+# Direct CLI
+python3 ~/projects/pulse/scripts/pulse.py "your topic"
+python3 ~/projects/pulse/scripts/pulse.py "bitcoin halving" --depth deep --sources reddit,polymarket
+python3 ~/projects/pulse/scripts/pulse.py --diagnose
 
-Options:
-  --emit MODE     Output: compact (default), json, full, context
-  --depth MODE    Depth: quick, default (default), deep
-  --sources LIST  Comma-separated: reddit,hackernews,polymarket,github,web,news
-  --lookback N    Days to look back (default: 30)
-  --save-dir DIR  Save report to directory
-  --diagnose      Show available sources and exit
-  --debug         Enable debug logging
+# Via symlink (after install.sh)
+pulse "your topic"
+
+# Hermes integration — context injection
+python3 ~/projects/pulse/scripts/pulse.py "your topic" --emit=context
+python3 ~/projects/pulse/scripts/pulse.py "your topic" --emit=json
 ```
 
-## Examples
+## Options
 
 ```
-pulse OpenAI Codex
-pulse Kanye West --depth deep
-pulse best noise cancelling headphones --sources reddit,web
-pulse will Trump win 2028 --sources polymarket,reddit
-pulse @steipete --depth deep
-```
-
-## Setup
-
-### Required
-Nothing! Reddit, Hacker News, and Polymarket work out of the box (free, no API keys).
-
-### Optional API Keys
-Add to `~/.config/pulse/.env` or export as environment variables:
-
-```
-# Web search (pick one):
-BRAVE_API_KEY=your_key          # Free: 2000 queries/month at brave.com/search/api
-SERPER_API_KEY=your_key         # Google search via serper.dev
-EXA_API_KEY=your_key            # Semantic search via exa.ai
-
-# GitHub (enables repo/issue/PR search):
-GITHUB_TOKEN=your_token         # Or use `gh auth login`
-
-# News (optional):
-NEWSAPI_KEY=your_key            # Free: 100 requests/day at newsapi.org
-```
-
-### Check Available Sources
-```bash
-python3 ~/.hermes/skills/pulse/scripts/pulse.py --diagnose
-```
-
-## Architecture
-
-```
-scripts/
-  pulse.py          # CLI entry point
-  lib/
-    __init__.py          # Package init
-    schema.py            # Data models (SourceItem, Candidate, Cluster, Report)
-    pipeline.py          # Orchestrator (parallel fetch -> normalize -> score -> fuse -> cluster)
-    planner.py           # Intent detection + source selection + subquery generation
-    normalize.py         # Source-specific normalizers to canonical SourceItem
-    score.py             # Multi-signal scoring (relevance, recency, engagement, source quality)
-    dedupe.py            # Near-duplicate detection (URL + title similarity)
-    fusion.py            # Weighted Reciprocal Rank Fusion
-    cluster.py           # Content-based clustering
-    render.py            # Terminal-friendly output rendering
-    config.py            # Environment and API key management
-    dates.py             # Date range utilities
-    http.py              # HTTP client with retry logic
-    relevance.py         # Token overlap scoring
-    log.py               # Logging utilities
-    reddit.py            # Reddit public JSON search (free, no auth)
-    hackernews.py        # HN Algolia API search (free, no auth)
-    polymarket.py        # Polymarket Gamma API search (free, no auth)
-    github.py            # GitHub search via gh CLI or API
-    web_search.py        # Brave/Serper/Exa web search
-    news.py              # NewsAPI search
+--emit MODE       Output: compact (default), json, full, context
+--depth MODE      Depth: quick, default (default), deep
+--sources LIST    Comma-separated: reddit,hackernews,polymarket,github,web,news
+--lookback N      Days to look back (default: 30)
+--save-dir DIR    Save report to directory
+--diagnose        Show available sources
+--debug           Enable debug logging
 ```
 
 ## How Scoring Works
 
 Each item gets four signals:
-1. **Local Relevance** (35%): Token overlap with topic + source's own relevance hint
-2. **Freshness** (25%): Recency within the lookback window
-3. **Engagement** (25%): Platform-specific metrics (upvotes, points, volume, stars)
-4. **Source Quality** (15%): Baseline trust in the source
+1. **Local Relevance** (35%): Token overlap with topic
+2. **Freshness** (25%): Recency within lookback window
+3. **Engagement** (25%): Platform metrics (upvotes, points, volume, stars)
+4. **Source Quality** (15%): Baseline trust in data source
 
-Sources are then fused using Weighted Reciprocal Rank Fusion, which naturally rewards items that appear across multiple sources and subqueries.
+Fused via Weighted Reciprocal Rank Fusion (k=60). Items appearing across multiple sources get a natural boost.
 
-## Output Modes
+## Setup
 
-- **compact**: Terminal-friendly clusters with top items (default)
-- **full**: All items by source, detailed (for saving/auditing)
-- **json**: Machine-readable JSON for programmatic use
-- **context**: Compact snippet for embedding in other skills/agents
+Three sources work with zero config (Reddit, HN, Polymarket).
 
-## Embedding In Other Skills
-
-```bash
-# Get context snippet for injection
-python3 ~/.hermes/skills/pulse/scripts/pulse.py "your topic" --emit=context
-
-# Get JSON for programmatic use
-python3 ~/.hermes/skills/pulse/scripts/pulse.py "your topic" --emit=json
-
-# Save report to disk
-python3 ~/.hermes/skills/pulse/scripts/pulse.py "your topic" --save-dir ~/Documents/research/
+Optional keys in `~/.config/pulse/.env`:
 ```
+BRAVE_API_KEY=your_key       # Web search
+GITHUB_TOKEN=your_token      # GitHub search
+NEWSAPI_KEY=your_key         # News articles
+```
+
+## Hermes Built-in vs PULSE Unique Value
+
+Before building features, check what Hermes already provides. This audit was done 2026-04-13:
+
+| Capability | Hermes Built-in | PULSE Adds |
+|-----------|:-:|:-:|
+| Web Search | `web_search` (Exa/Firecrawl/Parallel/Tavily) | — |
+| Browser | Camoufox (can scrape anything) | — |
+| Polymarket | Dedicated skill (`skills/research/polymarket`) | — |
+| X/Twitter | xitter skill (`skills/social-media/xitter`) | — |
+| GitHub | Multiple skills (PR, Issues, Repo) | — |
+| Memory | Built-in + 8 provider plugins | — |
+| Cron Jobs | `cronjob` tool | — |
+| Session Search | `session_search` tool | — |
+| Reddit (public JSON) | **NO** | **YES** — no browser, no API key |
+| HN Algolia Search | **NO** | **YES** — no browser, no API key |
+| Multi-Source Pipeline | **NO** | **YES** — parallel fetch + normalize + score |
+| RRF Fusion | **NO** | **YES** — cross-source ranking |
+| Evidence Clustering | **NO** | **YES** — content similarity grouping |
+| Engagement Scoring | **NO** | **YES** — platform-specific metrics |
+
+**Rule of thumb**: If Hermes has a tool/skill for it, USE that. PULSE fills gaps, not duplicates.
+
+## See Also
+
+- [itsXactlY/neural-memory](https://github.com/itsXactlY/neural-memory) — Neural Memory for semantic clustering and cross-session research history
+- [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill) — The original that inspired PULSE
