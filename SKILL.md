@@ -95,11 +95,14 @@ pulse "your topic" --emit=full      # Save to disk or audit
 ## Setup
 
 ```bash
+# Clone
+git clone https://github.com/itsXactlY/pulse-hermes && cd pulse-hermes
+
 # Install into Hermes
-bash ~/projects/pulse/install.sh
+bash install.sh
 
 # Or just run directly (no install needed)
-python3 ~/projects/pulse/scripts/pulse.py "your topic"
+python3 scripts/pulse.py "your topic"
 ```
 
 ### Optional API Keys

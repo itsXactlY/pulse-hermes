@@ -62,8 +62,7 @@ Three sources work out of the box with zero configuration.
 
 ```bash
 # Clone and install
-git clone https://github.com/itsXactlY/pulse-hermes ~/projects/pulse
-cd ~/projects/pulse
+git clone https://github.com/itsXactlY/pulse-hermes && cd pulse-hermes
 bash install.sh
 
 # Run it
@@ -76,7 +75,7 @@ pulse --diagnose
 ### No Install (Direct)
 
 ```bash
-python3 ~/projects/pulse/scripts/pulse.py "your topic"
+python3 scripts/pulse.py "your topic"
 ```
 
 ## CLI Reference
