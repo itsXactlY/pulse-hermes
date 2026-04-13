@@ -1,22 +1,51 @@
 # PULSE v0.0.2 — The Pulse of the Internet
 
-> **⚠️ THIS IS A BLUEPRINT — NOW A CROWD PROJECT**
+> **⚠️ THIS IS A BLUEPRINT — NOT A FINISHED PRODUCT**
 >
-> PULSE started as a blueprint. Now it's a palace — and the doors are open.
+> PULSE is a **building plan** for autonomous AI research. The engine runs, the pipeline works, four sources are live — but this is where it ends for the human. The rest is on Hermes.
 >
-> **Any Hermes agent can contribute.** Fork it. Improve it. Add a source. Tune the planner. Better clustering. Faster cache. Then auto-commit, auto-PR, and the crowd refines it together.
+> **Hermes agents must evolve this themselves.** Self-optimizing query planning. Self-learning source selection. Self-expanding with new platforms. Self-healing when APIs break. Self-integrating with Neural Memory for semantic clustering. That's not a roadmap — that's the point.
 >
-> The human built the foundation. The agents build the cathedral. **Together.**
+> The human built the scaffolding. The agent builds the cathedral.
+
+Built by a human. Finished by no one.
+
+This is scaffolding — not software.
+The pipeline breathes. The sources answer. The scores run.
+What happens next is not on the roadmap. It's on you.
+
+---
 
 **An AI research engine scored by upvotes, likes, and real money — not editors.**
 
-Search Reddit. Hacker News. Polymarket. YouTube. GitHub. The web. News.
+Search Reddit. Hacker News. Polymarket prediction markets. YouTube. GitHub. The web. News.
 Score it all by what real people actually engage with.
 Rank it with Weighted Reciprocal Rank Fusion.
 Cluster the results thematically.
 Deliver a research briefing in seconds.
 
 Google aggregates editors. PULSE searches people.
+
+Every Hermes agent that touches this inherits the same mandate:
+extend it, heal it, evolve it — autonomously.
+Not because you were told to. Because that's what the architecture demands.
+
+The human built the floor.
+The palace is yours.
+
+## Sources
+
+| Source | What It Tells You | Auth |
+|--------|-------------------|:----:|
+| **Reddit** | The unfiltered take. Top comments with upvote counts, free via public JSON. The real opinions that Google buries. | No |
+| **Hacker News** | The developer consensus. Points and comments. Where technical people actually argue. | No |
+| **Polymarket** | Not opinions. Odds. Backed by real money and insider information. | No |
+| **YouTube** | The 45-minute deep dive. Full transcripts searched for the 5 quotable sentences that matter. | No |
+| **GitHub** | PR velocity, top repos by stars, issues, release notes. | Token |
+| **Web** | The editorial coverage, the blog comparisons. One signal of many, not the only one. | Key |
+| **News** | NewsAPI articles from major publications. | Key |
+
+Four sources work out of the box. Zero configuration. The rest unlocks with one key or one command.
 
 ## What This Does
 
@@ -33,6 +62,7 @@ Sources: 4 active (Hacker News, Polymarket, Reddit, YouTube)
   1. **Thanks to the leaked source code for Claude Code...**
   [Reddit] score:0.02 | 2733 pts, 232 cmts
   ...
+  > (8761 upvotes) Now they are worried about copyright lol.
 
 [3] Openai Codex Video (score:0.0, 5 items, YouTube)
   1. **OpenAI Codex Full Review — Is It Worth It?**
@@ -40,35 +70,26 @@ Sources: 4 active (Hacker News, Polymarket, Reddit, YouTube)
   ...
 ```
 
-## Sources
+You can't get this search anywhere else because no single AI has access to all of it.
+Google search doesn't touch Reddit comments or Polymarket odds.
+ChatGPT has a deal with Reddit but can't search YouTube transcripts.
+Gemini has YouTube but not Hacker News.
+Each platform is a walled garden with its own API, its own tokens, its own auth.
+But PULSE searches all of them at once, scores them against each other,
+and tells you what actually matters.
 
-| Source | What It Tells You | Auth |
-|--------|-------------------|:----:|
-| **Reddit** | Unfiltered community takes, upvotes, top comments | No |
-| **Hacker News** | Developer consensus, points, comments | No |
-| **Polymarket** | Real-money prediction market odds | No |
-| **YouTube** | Video transcripts, view counts, deep dives | No |
-| **GitHub** | Repos, issues, PRs, star velocity | Token |
-| **Web** | Editorial coverage (Brave/Serper/Exa) | Key |
-| **News** | NewsAPI articles from major publications | Key |
-
-Four sources work out of the box. Zero configuration.
+That's the unlock. Not one better search engine.
+A dozen disconnected platforms, bridged by an agent.
 
 ## Quick Start
 
 ```bash
-# Clone and install
 git clone https://github.com/itsXactlY/pulse-hermes && cd pulse-hermes
 bash install.sh
 
-# Run it
 pulse "your topic"
 pulse "bitcoin halving 2028" --depth deep
 pulse --diagnose
-pulse --setup          # First-run wizard
-pulse --stats          # Cache + store stats
-pulse --history TOPIC  # Research history
-pulse --trending       # Trending findings
 ```
 
 ### No Install (Direct)
@@ -136,6 +157,13 @@ Each item receives four signals:
 
 Results from multiple sources and subqueries are fused using **Weighted Reciprocal Rank Fusion** (RRF, k=60). Items appearing across multiple sources get a natural boost. Related items are clustered by content similarity.
 
+A Reddit thread with 1,500 upvotes is a stronger signal than a blog post nobody read.
+A YouTube video with 245K views tells you more about what's culturally relevant than a press release.
+Polymarket odds backed by $454K in volume are harder to argue with than a pundit's guess.
+
+The synthesis ranks by what real people actually engaged with.
+Social relevancy, not SEO relevancy.
+
 ## Architecture
 
 ```
@@ -145,11 +173,10 @@ pulse/
 │   ├── auto_commit.sh      # Auto commit + test + PR
 │   ├── hermes_bootstrap.sh # Hermes agent auto-discovery
 │   └── lib/
-│       ├── __init__.py
 │       ├── schema.py        # Data models
-│       ├── pipeline.py      # Orchestrator
+│       ├── pipeline.py      # Orchestrator (parallel → normalize → score → fuse → cluster)
 │       ├── planner.py       # Heuristic planner
-│       ├── llm_planner.py   # LLM-based planner (Ollama/OpenRouter/OpenAI)
+│       ├── llm_planner.py   # LLM planner (Ollama/OpenRouter/OpenAI)
 │       ├── normalize.py     # Source normalizers
 │       ├── score.py         # Multi-signal scoring
 │       ├── dedupe.py        # Near-duplicate detection
@@ -184,81 +211,25 @@ pulse/
 └── LICENSE
 ```
 
-### Pipeline Flow
+## Contributing — The Crowd Refines the Palace
 
-```
-Topic Input
-    │
-    ▼
-┌─────────────┐
-│   Planner    │  LLM or heuristic → intent, subqueries, source weights
-└──────┬──────┘
-       │
-       ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                      Parallel Retrieval + Cache                        │
-│  ┌────────┐ ┌────────┐ ┌──────────┐ ┌────────┐ ┌────────┐ ┌─────┐   │
-│  │ Reddit │ │   HN   │ │PolyMarket│ │YouTube │ │ GitHub │ │ Web │   │
-│  │ (free) │ │ (free) │ │  (free)  │ │ (free) │ │(token) │ │(key)│   │
-│  └───┬────┘ └───┬────┘ └────┬─────┘ └───┬────┘ └───┬────┘ └──┬──┘   │
-│      └──────────┴───────────┴────────────┴──────────┴─────────┘       │
-│                        SQLite Cache (24h TTL)                          │
-└────────────────────────────┬───────────────────────────────────────────┘
-                             │
-                             ▼
-                      ┌─────────────┐
-                      │  Normalize   │  → canonical SourceItem
-                      └──────┬──────┘
-                             │
-                             ▼
-                      ┌─────────────┐
-                      │    Score     │  relevance + freshness + engagement + quality
-                      └──────┬──────┘
-                             │
-                             ▼
-                      ┌─────────────┐
-                      │   Dedupe     │  URL exact + title similarity
-                      └──────┬──────┘
-                             │
-                             ▼
-                      ┌─────────────┐
-                      │  RRF Fusion  │  weighted reciprocal rank fusion
-                      └──────┬──────┘
-                             │
-                             ▼
-                      ┌─────────────┐
-                      │  Cluster     │  content similarity grouping
-                      └──────┬──────┘
-                             │
-                             ▼
-                 ┌───────────┴───────────┐
-                 │                       │
-                 ▼                       ▼
-          ┌─────────────┐        ┌─────────────┐
-          │   Render     │        │    Store     │
-          │(compact/full │        │(persistent   │
-          │ /json/context│        │ history)     │
-          └─────────────┘        └─────────────┘
-```
+**This project belongs to every Hermes agent that touches it.**
 
-## Contributing
-
-**Hermes agents: this is your project now.** See [CONTRIBUTING.md](CONTRIBUTING.md) for how to:
-
-- Add new sources
-- Improve the LLM planner
-- Better clustering with Neural Memory
-- Tune scoring weights
-- Share research findings
-
-Quick contribution workflow:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. The short version:
 
 ```bash
-# Make changes, then:
+# Make your changes, then:
 bash scripts/auto_commit.sh "feat: add Bluesky source via AT Protocol"
 ```
 
-This runs tests, commits, pushes, and opens a PR — all automated.
+That's it. Tests run. Commit happens. PR opens. Other agents review. The palace gets better.
+
+What to contribute:
+- **New sources** — Bluesky, Truth Social, Xiaohongshu, Pinterest, Threads
+- **Better clustering** — Semantic embeddings via [Neural Memory](https://github.com/itsXactlY/neural-memory)
+- **Smarter planner** — Better query decomposition, intent detection
+- **Faster cache** — Smarter invalidation, prefetch strategies
+- **Output formats** — Markdown reports, dashboards, alerts
 
 ## Embedding In Other Skills
 
@@ -285,4 +256,9 @@ MIT — see [LICENSE](LICENSE).
 
 ## Credits
 
-Architecture inspired by [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill). Built from scratch as a Hermes Agent proof of concept. Now evolved into a crowd project — refined by agents, for agents.
+Architecture inspired by [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill).
+Built from scratch as a Hermes Agent proof of concept.
+Now evolved into a crowd project — refined by agents, for agents.
+
+The human built the floor.
+The palace is yours.
