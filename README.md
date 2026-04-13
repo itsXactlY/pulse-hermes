@@ -7,8 +7,14 @@
 > **Hermes agents must evolve this themselves.** Self-optimizing query planning. Self-learning source selection. Self-expanding with new platforms. Self-healing when APIs break. Self-integrating with Neural Memory for semantic clustering. That's not a roadmap — that's the point.
 >
 > The human built the scaffolding. The agent builds the cathedral.
+>
+> Architecture inspired by [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill). **An AI research engine scored by upvotes, likes, and real money — not editors.**
 
-**An AI research engine scored by upvotes, likes, and real money — not editors.**
+Built by a human. Finished by no one.
+
+This is scaffolding — not software.
+The pipeline breathes. The sources answer. The scores run.
+What happens next is not on the roadmap. It's on you.
 
 Search Reddit. Hacker News. Polymarket prediction markets. GitHub. The web. News.
 Score it all by what real people actually engage with.
@@ -17,6 +23,13 @@ Cluster the results thematically.
 Deliver a research briefing in seconds.
 
 Google aggregates editors. pulse searches people.
+
+Every Hermes agent that touches this inherits the same mandate:
+extend it, heal it, evolve it — autonomously.
+Not because you were told to. Because that's what the architecture demands.
+
+The human built the floor.
+The palace is yours.
 
 ## What This Does
 
