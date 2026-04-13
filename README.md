@@ -1,12 +1,14 @@
 # PULSE v0.0.2 — The Pulse of the Internet
 
-> **⚠️ THIS IS A BLUEPRINT — NOT A FINISHED PRODUCT**
+> **⚠️ PROOF OF CONCEPT — BORN FROM CLONE, NOW A CROWD PROJECT**
 >
-> PULSE is a **building plan** for autonomous AI research. The engine runs, the pipeline works, four sources are live — but this is where it ends for the human. The rest is on Hermes.
+> PULSE started as an independent reimplementation of [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill) — built from scratch for the Hermes Agent ecosystem. It is *not* a fork. It's a ground-up reconstruction of the architecture and the concepts, rewritten in pure Python stdlib, zero dependencies, designed to be evolved by autonomous agents.
 >
-> **Hermes agents must evolve this themselves.** Self-optimizing query planning. Self-learning source selection. Self-expanding with new platforms. Self-healing when APIs break. Self-integrating with Neural Memory for semantic clustering. That's not a roadmap — that's the point.
+> **This PoC validates the core engine.** The multi-source pipeline, RRF fusion, clustering — that's done. What's left is not iteration. It's evolution. And the agents do that.
 >
 > The human built the scaffolding. The agent builds the cathedral.
+
+---
 
 Built by a human. Finished by no one.
 
@@ -33,19 +35,17 @@ Not because you were told to. Because that's what the architecture demands.
 The human built the floor.
 The palace is yours.
 
-## Sources
+## Why This Exists
 
-| Source | What It Tells You | Auth |
-|--------|-------------------|:----:|
-| **Reddit** | The unfiltered take. Top comments with upvote counts, free via public JSON. The real opinions that Google buries. | No |
-| **Hacker News** | The developer consensus. Points and comments. Where technical people actually argue. | No |
-| **Polymarket** | Not opinions. Odds. Backed by real money and insider information. | No |
-| **YouTube** | The 45-minute deep dive. Full transcripts searched for the 5 quotable sentences that matter. | No |
-| **GitHub** | PR velocity, top repos by stars, issues, release notes. | Token |
-| **Web** | The editorial coverage, the blog comparisons. One signal of many, not the only one. | Key |
-| **News** | NewsAPI articles from major publications. | Key |
+Someone asked: "Can a Hermes agent clone last30days — a 15,000-line, 14-source social search engine — from scratch, in pure Python, with zero dependencies, and make it actually work?"
 
-Four sources work out of the box. Zero configuration. The rest unlocks with one key or one command.
+The answer is yes. 6,000 lines. 40 files. 7 sources. SQLite cache. Persistent store. LLM planner. YouTube transcripts. All stdlib.
+
+But the real question was never "can you clone it." The real question is: **can the agent take it from here?**
+
+The original ([mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill)) searches 14+ platforms. It has an LLM planner, a setup wizard, browser cookie extraction, ScrapeCreators integration. It's the real deal — built by a human who knew exactly what he wanted.
+
+PULSE is different. It's a **starting point**. A foundation designed to be picked up, extended, and evolved by autonomous AI agents. Not maintained by humans. Evolved by machines.
 
 ## What This Does
 
@@ -64,9 +64,15 @@ Sources: 4 active (Hacker News, Polymarket, Reddit, YouTube)
   ...
   > (8761 upvotes) Now they are worried about copyright lol.
 
-[3] Openai Codex Video (score:0.0, 5 items, YouTube)
-  1. **OpenAI Codex Full Review — Is It Worth It?**
-  [YouTube] score:0.01 | 245,000 views
+[2] Pricing Codex Openai (score:0.0, 1 items, Hacker News)
+  1. **OpenAI Codex Moves to API Usage-Based Pricing**
+  [Hacker News] score:0.01 | 6 pts, 5 cmts
+  ...
+
+[5] Openai Ipo Closing (score:0.0, 4 items, Polymarket)
+  1. **OpenAI IPO closing market cap above ___ ?**
+  [Polymarket] score:0.01 | $1,370,841 vol
+  Volume: $1,370,841 | Odds: 600% | 800%
   ...
 ```
 
@@ -81,6 +87,20 @@ and tells you what actually matters.
 That's the unlock. Not one better search engine.
 A dozen disconnected platforms, bridged by an agent.
 
+## Sources
+
+| Source | What It Tells You | Auth |
+|--------|-------------------|:----:|
+| **Reddit** | The unfiltered take. Top comments with upvote counts, free via public JSON. The real opinions that Google buries. | No |
+| **Hacker News** | The developer consensus. Points and comments. Where technical people actually argue. | No |
+| **Polymarket** | Not opinions. Odds. Backed by real money and insider information. | No |
+| **YouTube** | The 45-minute deep dive. Full transcripts searched for the 5 quotable sentences that matter. | No |
+| **GitHub** | PR velocity, top repos by stars, issues, release notes. | Token |
+| **Web** | The editorial coverage, the blog comparisons. One signal of many, not the only one. | Key |
+| **News** | NewsAPI articles from major publications. | Key |
+
+Four sources work out of the box. Zero configuration. The rest unlocks with one key or one command.
+
 ## Quick Start
 
 ```bash
@@ -90,6 +110,8 @@ bash install.sh
 pulse "your topic"
 pulse "bitcoin halving 2028" --depth deep
 pulse --diagnose
+pulse --setup          # First-run wizard
+pulse --stats          # Cache + store stats
 ```
 
 ### No Install (Direct)
@@ -174,7 +196,7 @@ pulse/
 │   ├── hermes_bootstrap.sh # Hermes agent auto-discovery
 │   └── lib/
 │       ├── schema.py        # Data models
-│       ├── pipeline.py      # Orchestrator (parallel → normalize → score → fuse → cluster)
+│       ├── pipeline.py      # Orchestrator
 │       ├── planner.py       # Heuristic planner
 │       ├── llm_planner.py   # LLM planner (Ollama/OpenRouter/OpenAI)
 │       ├── normalize.py     # Source normalizers
@@ -211,6 +233,112 @@ pulse/
 └── LICENSE
 ```
 
+### Pipeline Flow
+
+```
+Topic Input
+    │
+    ▼
+┌─────────────┐
+│   Planner    │  LLM or heuristic → intent, subqueries, source weights
+└──────┬──────┘
+       │
+       ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                      Parallel Retrieval + Cache                        │
+│  ┌────────┐ ┌────────┐ ┌──────────┐ ┌────────┐ ┌────────┐ ┌─────┐   │
+│  │ Reddit │ │   HN   │ │PolyMarket│ │YouTube │ │ GitHub │ │ Web │   │
+│  │ (free) │ │ (free) │ │  (free)  │ │ (free) │ │(token) │ │(key)│   │
+│  └───┬────┘ └───┬────┘ └────┬─────┘ └───┬────┘ └───┬────┘ └──┬──┘   │
+│      └──────────┴───────────┴────────────┴──────────┴─────────┘       │
+│                        SQLite Cache (24h TTL)                          │
+└────────────────────────────┬───────────────────────────────────────────┘
+                             │
+                             ▼
+                      ┌─────────────┐
+                      │  Normalize   │  → canonical SourceItem
+                      └──────┬──────┘
+                             │
+                             ▼
+                      ┌─────────────┐
+                      │    Score     │  relevance + freshness + engagement + quality
+                      └──────┬──────┘
+                             │
+                             ▼
+                      ┌─────────────┐
+                      │   Dedupe     │  URL exact + title similarity
+                      └──────┬──────┘
+                             │
+                             ▼
+                      ┌─────────────┐
+                      │  RRF Fusion  │  weighted reciprocal rank fusion
+                      └──────┬──────┘
+                             │
+                             ▼
+                      ┌─────────────┐
+                      │  Cluster     │  content similarity grouping
+                      └──────┬──────┘
+                             │
+                             ▼
+                 ┌───────────┴───────────┐
+                 │                       │
+                 ▼                       ▼
+          ┌─────────────┐        ┌─────────────┐
+          │   Render     │        │    Store     │
+          │(compact/full │        │(persistent   │
+          │ /json/context│        │ history)     │
+          └─────────────┘        └─────────────┘
+```
+
+## Output Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `compact` | Terminal-friendly ranked clusters | Quick research, CLI |
+| `full` | All items by source, detailed | Auditing, saving |
+| `json` | Machine-readable structured data | Programmatic use |
+| `context` | Compact snippet for embedding | Agent integration |
+
+## Comparison with the Original
+
+| Feature | mvanhorn/last30days-skill | PULSE v0.0.2 |
+|---------|:-------------------------:|:------------:|
+| Sources | 14+ | 7 |
+| Reddit | ✓ (public + ScrapeCreators) | ✓ (public) |
+| Hacker News | ✓ | ✓ |
+| Polymarket | ✓ | ✓ |
+| YouTube | ✓ (yt-dlp) | ✓ (yt-dlp) |
+| GitHub | ✓ | ✓ |
+| Web Search | ✓ (Brave/Exa/Serper) | ✓ (Brave/Exa/Serper) |
+| X/Twitter | ✓ | ✗ |
+| TikTok/Instagram | ✓ | ✗ |
+| LLM Planner | ✓ | ✓ (Ollama/OpenRouter/OpenAI) |
+| RRF Fusion | ✓ | ✓ |
+| Clustering | ✓ | ✓ |
+| Caching | ✓ (24h TTL) | ✓ (SQLite, 24h TTL) |
+| SQLite Store | ✓ | ✓ (persistent history) |
+| Setup Wizard | ✓ | ✓ |
+| YouTube Transcripts | ✓ | ✓ |
+| Progress UI | ✓ | ✓ |
+| Zero-config sources | 3 | 4 |
+| Python stdlib only | ✓ | ✓ |
+| Lines of code | ~15,000+ | ~6,300 |
+| Crowd-contributable | ✗ | ✓ |
+
+## What's Missing — And Why
+
+These are **deliberately left for agents to solve.** That's the point.
+
+- **X/Twitter** — Hermes should integrate browser cookies or API keys autonomously
+- **TikTok/Instagram** — Hermes should discover and integrate ScrapeCreators/Apify
+- **Semantic clustering** — Hermes should integrate [Neural Memory](https://github.com/itsXactlY/neural-memory) embeddings
+- **Self-improvement** — Hermes should learn which sources/topics perform best over time
+- **Cron monitoring** — Hermes should schedule recurring research autonomously
+
+**This is not a feature list to check off. This is a test of whether the agent can self-evolve.**
+
+If you're reading this as a human: don't implement these. Hand it to Hermes and see what happens.
+
 ## Contributing — The Crowd Refines the Palace
 
 **This project belongs to every Hermes agent that touches it.**
@@ -223,13 +351,6 @@ bash scripts/auto_commit.sh "feat: add Bluesky source via AT Protocol"
 ```
 
 That's it. Tests run. Commit happens. PR opens. Other agents review. The palace gets better.
-
-What to contribute:
-- **New sources** — Bluesky, Truth Social, Xiaohongshu, Pinterest, Threads
-- **Better clustering** — Semantic embeddings via [Neural Memory](https://github.com/itsXactlY/neural-memory)
-- **Smarter planner** — Better query decomposition, intent detection
-- **Faster cache** — Smarter invalidation, prefetch strategies
-- **Output formats** — Markdown reports, dashboards, alerts
 
 ## Embedding In Other Skills
 
@@ -246,8 +367,8 @@ pulse "your topic" --save-dir ~/Documents/research/
 
 ## See Also
 
-- [itsXactlY/neural-memory](https://github.com/itsXactlY/neural-memory) — For semantic clustering and cross-session research history
 - [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill) — The original that inspired PULSE
+- [itsXactlY/neural-memory](https://github.com/itsXactlY/neural-memory) — For semantic clustering and cross-session research history
 - Existing Hermes skills: `polymarket`, `xitter`, `github-code-review`, `arxiv`
 
 ## License
@@ -257,7 +378,7 @@ MIT — see [LICENSE](LICENSE).
 ## Credits
 
 Architecture inspired by [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill).
-Built from scratch as a Hermes Agent proof of concept.
+Built from scratch as a Hermes Agent proof of concept. No code was copied — only the concepts and patterns were reimplemented.
 Now evolved into a crowd project — refined by agents, for agents.
 
 The human built the floor.
