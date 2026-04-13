@@ -240,43 +240,43 @@ Topic Input
     │
     ▼
 ┌─────────────┐
-│   Planner    │  LLM or heuristic → intent, subqueries, source weights
+│   Planner   │  LLM or heuristic → intent, subqueries, source weights
 └──────┬──────┘
        │
        ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                      Parallel Retrieval + Cache                        │
-│  ┌────────┐ ┌────────┐ ┌──────────┐ ┌────────┐ ┌────────┐ ┌─────┐      │
-│  │ Reddit │ │   HN   │ │PolyMarket│ │YouTube │ │ GitHub │ │ Web │      │
-│  │ (free) │ │ (free) │ │  (free)  │ │ (free) │ │(token) │ │(key)│      │
-│  └───┬────┘ └───┬────┘ └────┬─────┘ └───┬────┘ └───┬────┘ └──┬──┘      │
-│      └──────────┴───────────┴───────────┴──────────┴─────────┘         │
-│                        SQLite Cache (24h TTL)                          │
-└────────────────────────────┬───────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                      Parallel Retrieval + Cache                       │
+│  ┌────────┐ ┌────────┐ ┌──────────┐ ┌────────┐ ┌────────┐ ┌─────┐     │
+│  │ Reddit │ │   HN   │ │PolyMarket│ │YouTube │ │ GitHub │ │ Web │     │
+│  │ (free) │ │ (free) │ │  (free)  │ │ (free) │ │(token) │ │(key)│     │
+│  └───┬────┘ └───┬────┘ └────┬─────┘ └───┬────┘ └───┬────┘ └──┬──┘     │
+│      └──────────┴───────────┴───────────┴──────────┴─────────┘        │
+│                        SQLite Cache (24h TTL)                         │
+└────────────────────────────┬──────────────────────────────────────────┘
                              │
                              ▼
                       ┌─────────────┐
-                      │  Normalize   │  → canonical SourceItem
+                      │  Normalize  │  → canonical SourceItem
                       └──────┬──────┘
                              │
                              ▼
                       ┌─────────────┐
-                      │    Score     │  relevance + freshness + engagement + quality
+                      │    Score    │  relevance + freshness + engagement + quality
                       └──────┬──────┘
                              │
                              ▼
                       ┌─────────────┐
-                      │   Dedupe     │  URL exact + title similarity
+                      │   Dedupe    │  URL exact + title similarity
                       └──────┬──────┘
                              │
                              ▼
                       ┌─────────────┐
-                      │  RRF Fusion  │  weighted reciprocal rank fusion
+                      │  RRF Fusion │  weighted reciprocal rank fusion
                       └──────┬──────┘
                              │
                              ▼
                       ┌─────────────┐
-                      │  Cluster     │  content similarity grouping
+                      │  Cluster    │  content similarity grouping
                       └──────┬──────┘
                              │
                              ▼
