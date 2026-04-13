@@ -16,6 +16,7 @@ SOURCE_CAPABILITIES = {
     "hackernews": {"types": ["tech", "startups", "programming", "science", "news"]},
     "polymarket": {"types": ["predictions", "events", "outcomes", "politics", "crypto", "sports"]},
     "github": {"types": ["code", "repos", "issues", "pulls", "releases", "developers"]},
+    "youtube": {"types": ["videos", "tutorials", "interviews", "reviews", "deep-dives"]},
     "web": {"types": ["everything"]},
     "news": {"types": ["news", "events", "coverage"]},
 }

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 
 CONFIG_DIR = Path.home() / ".config" / "pulse"
 CONFIG_FILE = CONFIG_DIR / ".env"
@@ -72,8 +72,9 @@ def get_config() -> dict[str, Any]:
     return config
 
 
-def available_sources(config: dict[str, Any]) -> list[str]:
+def available_sources(config: Dict[str, Any]) -> List[str]:
     """Determine which sources are available based on config."""
+    import shutil
     available = []
 
     # Reddit - always available (public JSON)
@@ -88,6 +89,27 @@ def available_sources(config: dict[str, Any]) -> list[str]:
     # GitHub - needs gh CLI or token
     if config.get("GITHUB_TOKEN"):
         available.append("github")
+    elif shutil.which("gh"):
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["gh", "auth", "status"],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                available.append("github")
+        except Exception:
+            pass
+
+    # YouTube - needs yt-dlp
+    if shutil.which("yt-dlp"):
+        available.append("youtube")
+    else:
+        try:
+            import yt_dlp
+            available.append("youtube")
+        except ImportError:
+            pass
 
     # Web search - needs Brave, Exa, or Serper key
     if config.get("BRAVE_API_KEY") or config.get("EXA_API_KEY") or config.get("SERPER_API_KEY"):

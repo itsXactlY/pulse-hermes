@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
-"""pulse v3.0.0 - Hermes Agent edition.
+"""PULSE v0.0.1 — The Pulse of the Internet.
 
-Research any topic across Reddit, Hacker News, Polymarket, GitHub, web, and news.
+Research any topic across Reddit, Hacker News, Polymarket, GitHub, YouTube, web, and news.
 Scores by real engagement metrics - upvotes, points, volume, stars.
 
 Usage:
     python3 pulse.py <topic> [options]
-
-Options:
-    --emit MODE     Output: compact (default), json, md, full, context
-    --depth MODE    Depth: quick, default (default), deep
-    --sources LIST  Comma-separated sources: reddit,hackernews,polymarket,github,web,news
-    --lookback N    Days to look back (default: 30)
-    --save-dir DIR  Save report to directory
-    --debug         Enable debug logging
+    python3 pulse.py --setup          # First-run setup wizard
+    python3 pulse.py --diagnose       # Show available sources
+    python3 pulse.py --stats          # Show cache & store statistics
+    python3 pulse.py --history TOPIC  # Show research history for topic
+    python3 pulse.py --trending       # Show trending findings across topics
 """
 
 from __future__ import annotations
@@ -29,13 +26,13 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from lib import config, log, pipeline, render
+from lib import cache, config, log, pipeline, render, store, ui
 from lib.schema import slugify
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Research any topic across Reddit, HN, Polymarket, GitHub, web, and news."
+        description="PULSE — Research any topic across Reddit, HN, Polymarket, GitHub, YouTube, web, and news."
     )
     parser.add_argument("topic", nargs="*", default=[], help="Research topic")
     parser.add_argument("--emit", default="compact",
@@ -49,7 +46,23 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Days to look back (default: 30)")
     parser.add_argument("--save-dir", help="Directory to save report")
     parser.add_argument("--diagnose", action="store_true",
-                        help="Print available sources and exit")
+                        help="Show available sources and exit")
+    parser.add_argument("--setup", action="store_true",
+                        help="Run first-run setup wizard")
+    parser.add_argument("--stats", action="store_true",
+                        help="Show cache and store statistics")
+    parser.add_argument("--history", metavar="TOPIC",
+                        help="Show research history for a topic")
+    parser.add_argument("--trending", action="store_true",
+                        help="Show trending findings across topics")
+    parser.add_argument("--no-llm", action="store_true",
+                        help="Disable LLM planner (use heuristic)")
+    parser.add_argument("--no-cache", action="store_true",
+                        help="Disable cache (always fetch fresh)")
+    parser.add_argument("--no-store", action="store_true",
+                        help="Disable persistent store")
+    parser.add_argument("--no-progress", action="store_true",
+                        help="Disable progress display")
     parser.add_argument("--debug", action="store_true",
                         help="Enable debug logging")
     return parser
@@ -61,7 +74,6 @@ def save_output(report, emit: str, save_dir: str) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     slug = slugify(report.topic)
     extension = "json" if emit == "json" else "md"
-
     out_path = path / f"{slug}-pulse.{extension}"
 
     if emit == "json":
@@ -77,32 +89,115 @@ def save_output(report, emit: str, save_dir: str) -> Path:
     return out_path
 
 
+def cmd_diagnose() -> int:
+    """Show available sources and environment."""
+    from lib.setup import detect_environment, get_available_sources, has_llm
+    env = detect_environment()
+    env["available_sources"] = get_available_sources(env)
+    env["has_llm"] = has_llm(env)
+
+    # Add cache stats
+    env["cache_stats"] = cache.stats()
+    env["store_stats"] = store.stats()
+
+    print(json.dumps(env, indent=2, default=str))
+    return 0
+
+
+def cmd_setup() -> int:
+    """Run the interactive setup wizard."""
+    from lib.setup import run_setup
+    run_setup()
+    return 0
+
+
+def cmd_stats() -> int:
+    """Show cache and store statistics."""
+    print("\nPULSE Statistics\n")
+
+    cs = cache.stats()
+    print(f"  Cache:")
+    print(f"    Active entries: {cs.get('active_entries', 0)}")
+    print(f"    Total hits: {cs.get('total_hits', 0)}")
+    print(f"    DB size: {cs.get('db_size_kb', 0)} KB")
+    if cs.get("by_source"):
+        print(f"    By source: {json.dumps(cs['by_source'])}")
+
+    ss = store.stats()
+    print(f"\n  Store:")
+    print(f"    Topics tracked: {ss.get('topics_tracked', 0)}")
+    print(f"    Total runs: {ss.get('total_runs', 0)}")
+    print(f"    Total findings: {ss.get('total_findings', 0)}")
+    print(f"    DB size: {ss.get('db_size_kb', 0)} KB")
+    if ss.get("findings_by_source"):
+        print(f"    By source: {json.dumps(ss['findings_by_source'])}")
+
+    print()
+    return 0
+
+
+def cmd_history(topic: str) -> int:
+    """Show research history for a topic."""
+    history = store.get_topic_history(topic)
+    if not history:
+        print(f"No history found for: {topic}")
+        return 0
+
+    print(f"\nResearch history for: {topic}\n")
+    for run in history:
+        status_icon = "✓" if run["status"] == "completed" else "⋯"
+        print(f"  {status_icon} {run['started_at'][:16]} | "
+              f"{run['items_found']} items, {run['clusters_found']} clusters | "
+              f"sources: {', '.join(run['sources_used'])}")
+    print()
+    return 0
+
+
+def cmd_trending() -> int:
+    """Show trending findings."""
+    findings = store.get_trending_findings(limit=20)
+    if not findings:
+        print("No trending findings yet. Run some research first!")
+        return 0
+
+    print("\nTrending Findings (seen across multiple runs)\n")
+    for f in findings:
+        print(f"  [{f['source']}] {f['seen_count']}x | {f['title'][:80]}")
+        if f.get("url"):
+            print(f"    {f['url']}")
+    print()
+    return 0
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
     if args.debug:
-        os.environ["LAST30DAYS_DEBUG"] = "1"
+        os.environ["PULSE_DEBUG"] = "1"
         log.DEBUG = True
 
-    # Load config
+    # Load config early for subcommands that need it
     cfg = config.get_config()
 
-    # Diagnose mode - check before topic validation
+    # Subcommands (no topic needed)
+    if args.setup:
+        return cmd_setup()
+
     if args.diagnose:
-        available = config.available_sources(cfg)
-        print(json.dumps({
-            "available_sources": available,
-            "has_brave": bool(cfg.get("BRAVE_API_KEY")),
-            "has_serper": bool(cfg.get("SERPER_API_KEY")),
-            "has_exa": bool(cfg.get("EXA_API_KEY")),
-            "has_github": bool(cfg.get("GITHUB_TOKEN")),
-            "has_newsapi": bool(cfg.get("NEWSAPI_KEY")),
-        }, indent=2))
-        return 0
+        return cmd_diagnose()
 
+    if args.stats:
+        return cmd_stats()
+
+    if args.history:
+        return cmd_history(args.history)
+
+    if args.trending:
+        return cmd_trending()
+
+    # Main research command
     topic = " ".join(args.topic).strip()
-
     if not topic:
         parser.print_usage(sys.stderr)
         return 2
@@ -120,6 +215,10 @@ def main() -> int:
             depth=args.depth,
             requested_sources=requested,
             lookback_days=args.lookback,
+            use_llm=not args.no_llm,
+            use_cache=not args.no_cache,
+            use_store=not args.no_store,
+            progress=not args.no_progress,
         )
     except RuntimeError as e:
         sys.stderr.write(f"Error: {e}\n")
@@ -134,7 +233,7 @@ def main() -> int:
     # Render output
     if args.emit == "json":
         output = render.render_json(report)
-    elif args.emit == "full" or args.emit == "md":
+    elif args.emit in ("full", "md"):
         output = render.render_full(report)
     elif args.emit == "context":
         output = render.render_context(report)

@@ -55,6 +55,11 @@ def compute_engagement_score(item: SourceItem) -> float:
         s = eng.get("stars", 0) or 0
         score = min(1.0, math.log1p(s) / 10.0)
 
+    # YouTube: views
+    elif item.source == "youtube":
+        v = eng.get("views", 0) or 0
+        score = min(1.0, math.log1p(v) / 15.0)
+
     # Web/News: no direct engagement
     else:
         score = 0.3  # Baseline

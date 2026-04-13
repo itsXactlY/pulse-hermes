@@ -14,6 +14,7 @@ SOURCE_LABELS = {
     "hackernews": "Hacker News",
     "polymarket": "Polymarket",
     "github": "GitHub",
+    "youtube": "YouTube",
     "web": "Web",
     "news": "News",
 }
@@ -194,7 +195,7 @@ def render_full(report: Report) -> str:
     lines.append("=== ALL ITEMS BY SOURCE ===")
     lines.append("")
 
-    source_order = ["reddit", "hackernews", "polymarket", "github", "web", "news"]
+    source_order = ["reddit", "hackernews", "polymarket", "github", "youtube", "web", "news"]
     for source in source_order:
         items = report.items_by_source.get(source, [])
         if not items:

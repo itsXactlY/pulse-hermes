@@ -188,6 +188,39 @@ def normalize_web(items: List[Dict[str, Any]], from_date: str, to_date: str) -> 
     return normalized
 
 
+def normalize_youtube(items: List[Dict[str, Any]], from_date: str, to_date: str) -> List[SourceItem]:
+    """Normalize YouTube items to SourceItem."""
+    normalized = []
+    for item in items:
+        date_str = item.get("date")
+        confidence = dates.get_date_confidence(date_str, from_date, to_date)
+
+        engagement = item.get("engagement", {})
+        metadata = {}
+        if item.get("transcript_highlights"):
+            metadata["transcript_highlights"] = item["transcript_highlights"]
+        if item.get("transcript_snippet"):
+            metadata["transcript_snippet"] = item["transcript_snippet"]
+
+        normalized.append(SourceItem(
+            item_id=_make_id("youtube", item.get("url", ""), item.get("title", "")),
+            source="youtube",
+            title=item.get("title", ""),
+            body=item.get("body", ""),
+            url=item.get("url", ""),
+            author=item.get("author"),
+            container="YouTube",
+            published_at=date_str,
+            date_confidence=confidence,
+            engagement=engagement,
+            relevance_hint=item.get("relevance", 0.5),
+            why_relevant=item.get("why_relevant", ""),
+            snippet=item.get("body", "")[:200],
+            metadata=metadata,
+        ))
+    return normalized
+
+
 def normalize_news(items: List[Dict[str, Any]], from_date: str, to_date: str) -> List[SourceItem]:
     """Normalize news items to SourceItem."""
     normalized = []
@@ -224,6 +257,7 @@ NORMALIZERS = {
     "hackernews": normalize_hackernews,
     "polymarket": normalize_polymarket,
     "github": normalize_github,
+    "youtube": normalize_youtube,
     "web": normalize_web,
     "news": normalize_news,
 }
