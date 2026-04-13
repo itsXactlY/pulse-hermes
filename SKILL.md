@@ -24,7 +24,11 @@ user-invocable: true
 Research ANY topic across Reddit, Hacker News, Polymarket, GitHub, web, and news.
 Scores by real engagement — upvotes, points, volume, stars. Not SEO. Not editors.
 
-> **⚠️ PROOF OF CONCEPT** — The core engine is done. Hermes should evolve this into a fully autonomous research system with LLM planner, X/Twitter, YouTube, caching, persistent store, and semantic clustering via [Neural Memory](https://github.com/itsXactlY/neural-memory).
+> **⚠️ THIS IS A BLUEPRINT — NOT A FINISHED PRODUCT**
+>
+> The engine runs. Three sources are live. The pipeline works. But this is where it ends for the human. **Hermes agents must evolve this themselves.** Self-optimizing query planning. Self-learning source selection. Self-expanding with new platforms. Self-healing when APIs break. Self-integrating with Neural Memory for semantic clustering.
+>
+> The human built the scaffolding. The agent builds the cathedral.
 
 ## Sources
 

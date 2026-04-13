@@ -1,12 +1,12 @@
-# pulse v0.0.1 — Hermes Edition
+# PULSE v0.0.1 — Hermes Edition
 
-> **⚠️ PROOF OF CONCEPT — CLONE WARNING**
+> **⚠️ THIS IS A BLUEPRINT — NOT A FINISHED PRODUCT**
 >
-> This is an independent reimplementation of [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill), built from scratch for the Hermes Agent ecosystem. It is *not* a fork — it's a ground-up reconstruction of the architecture and concepts.
+> PULSE is a **building plan** for autonomous AI research. The engine runs, the pipeline works, three sources are live — but this is where it ends for the human. The rest is on Hermes.
 >
-> **This PoC validates the core engine.** Hermes should evolve this into a fully autonomous, self-improving research system with memory, learning, and zero-config setup. The hard part — the multi-source pipeline, RRF fusion, clustering — is done. The rest is iteration.
-
----
+> **Hermes agents must evolve this themselves.** Self-optimizing query planning. Self-learning source selection. Self-expanding with new platforms. Self-healing when APIs break. Self-integrating with Neural Memory for semantic clustering. That's not a roadmap — that's the point.
+>
+> The human built the scaffolding. The agent builds the cathedral.
 
 **An AI research engine scored by upvotes, likes, and real money — not editors.**
 
@@ -235,18 +235,24 @@ pulse "your topic" --emit=json
 pulse "your topic" --save-dir ~/Documents/research/
 ```
 
-## Known Limitations (PoC)
+## Known Limitations (Blueprint)
 
-- **No LLM planner** — uses heuristic intent detection instead of LLM-based query planning
-- **No X/Twitter** — requires browser cookies or xAI API key (not implemented in PoC)
-- **No YouTube** — requires yt-dlp (not implemented in PoC)
-- **No TikTok/Instagram** — requires ScrapeCreators API key
-- **No setup wizard** — manual config only
-- **No caching** — fresh fetch every run
-- **No SQLite store** — no persistent history
-- **Basic clustering** — token-overlap only, no semantic embeddings
+These are **deliberately left for Hermes to solve.** That's the point.
 
-All of these are straightforward extensions. The hard part — the pipeline architecture, RRF fusion, multi-source normalization — is done.
+- **No LLM planner** — Hermes should develop its own query planning using its reasoning
+- **No X/Twitter** — Hermes should integrate browser cookies or API keys autonomously
+- **No YouTube** — Hermes should install yt-dlp and build transcript search itself
+- **No TikTok/Instagram** — Hermes should discover and integrate ScrapeCreators/Apify
+- **No caching** — Hermes should implement SQLite caching with smart invalidation
+- **No SQLite store** — Hermes should build persistent research history
+- **No semantic clustering** — Hermes should integrate [Neural Memory](https://github.com/itsXactlY/neural-memory) for embedding-based clustering
+- **No setup wizard** — Hermes should auto-detect and configure available sources
+- **No self-improvement** — Hermes should learn which sources/topics perform best over time
+- **No cron monitoring** — Hermes should schedule recurring research autonomously
+
+**This is not a feature list to check off. This is a test of whether the agent can self-evolve.**
+
+If you're reading this as a human: don't implement these. Hand it to Hermes and see what happens.
 
 ## Comparison with Original
 
@@ -273,16 +279,20 @@ All of these are straightforward extensions. The hard part — the pipeline arch
 
 ## Roadmap for Hermes
 
-1. **LLM Planner** — Use Hermes's own LLM for intelligent query planning
+This is not a human task list. This is what Hermes should **autonomously develop.**
+
+1. **LLM Planner** — Use your own reasoning for intelligent query planning
 2. **X/Twitter** — Browser cookie extraction or xAI API integration
-3. **YouTube** — yt-dlp transcript search
+3. **YouTube** — yt-dlp installation and transcript search
 4. **TikTok/Instagram** — ScrapeCreators or Apify integration
-5. **24h Cache** — SQLite-backed response caching
+5. **24h Cache** — SQLite-backed response caching with smart invalidation
 6. **Persistent Store** — Research history with dedup across runs
-7. **Semantic Clustering** — Use Neural Memory embeddings for clustering
+7. **Semantic Clustering** — Integrate [Neural Memory](https://github.com/itsXactlY/neural-memory) embeddings
 8. **Setup Wizard** — Auto-detect and configure available sources
 9. **Cron Integration** — Scheduled topic monitoring
-10. **Self-Improvement** — Hermes learns which sources/topics perform best
+10. **Self-Improvement** — Learn which sources/topics perform best
+
+**The blueprint is done. The cathedral is yours to build.**
 
 ## See Also
 
