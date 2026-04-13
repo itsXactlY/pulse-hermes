@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "last30days"
+name = "pulse"
 version = "0.0.1"
 description = "Multi-source social search engine scored by real engagement"
 readme = "README.md"
@@ -24,7 +24,7 @@ classifiers = [
 ]
 
 [project.scripts]
-last30days = "scripts.last30days:main"
+pulse = "scripts.pulse:main"
 
 [tool.setuptools.packages.find]
 include = ["scripts*"]

@@ -1,4 +1,4 @@
-# last30days v3.0.0 - Hermes Edition
+# pulse v3.0.0 - Hermes Edition
 
 Research ANY topic across Reddit, Hacker News, Polymarket, GitHub, web, and news.
 Surface what people are actually discussing, recommending, betting on, and debating right now.
@@ -18,7 +18,7 @@ Scores by real engagement: Reddit upvotes, HN points, Polymarket volume backed b
 
 ## How To Use
 
-Just ask: "last30days [topic]"
+Just ask: "pulse [topic]"
 
 The engine automatically:
 1. Detects your intent (prediction? comparison? person research?)
@@ -32,7 +32,7 @@ The engine automatically:
 ## CLI Reference
 
 ```bash
-python3 ~/.hermes/skills/last30days/scripts/last30days.py <topic> [options]
+python3 ~/.hermes/skills/pulse/scripts/pulse.py <topic> [options]
 
 Options:
   --emit MODE     Output: compact (default), json, full, context
@@ -47,11 +47,11 @@ Options:
 ## Examples
 
 ```
-last30days OpenAI Codex
-last30days Kanye West --depth deep
-last30days best noise cancelling headphones --sources reddit,web
-last30days will Trump win 2028 --sources polymarket,reddit
-last30days @steipete --depth deep
+pulse OpenAI Codex
+pulse Kanye West --depth deep
+pulse best noise cancelling headphones --sources reddit,web
+pulse will Trump win 2028 --sources polymarket,reddit
+pulse @steipete --depth deep
 ```
 
 ## Setup
@@ -60,7 +60,7 @@ last30days @steipete --depth deep
 Nothing! Reddit, Hacker News, and Polymarket work out of the box (free, no API keys).
 
 ### Optional API Keys
-Add to `~/.config/last30days/.env` or export as environment variables:
+Add to `~/.config/pulse/.env` or export as environment variables:
 
 ```
 # Web search (pick one):
@@ -77,14 +77,14 @@ NEWSAPI_KEY=your_key            # Free: 100 requests/day at newsapi.org
 
 ### Check Available Sources
 ```bash
-python3 ~/.hermes/skills/last30days/scripts/last30days.py --diagnose
+python3 ~/.hermes/skills/pulse/scripts/pulse.py --diagnose
 ```
 
 ## Architecture
 
 ```
 scripts/
-  last30days.py          # CLI entry point
+  pulse.py          # CLI entry point
   lib/
     __init__.py          # Package init
     schema.py            # Data models (SourceItem, Candidate, Cluster, Report)
@@ -130,11 +130,11 @@ Sources are then fused using Weighted Reciprocal Rank Fusion, which naturally re
 
 ```bash
 # Get context snippet for injection
-python3 ~/.hermes/skills/last30days/scripts/last30days.py "your topic" --emit=context
+python3 ~/.hermes/skills/pulse/scripts/pulse.py "your topic" --emit=context
 
 # Get JSON for programmatic use
-python3 ~/.hermes/skills/last30days/scripts/last30days.py "your topic" --emit=json
+python3 ~/.hermes/skills/pulse/scripts/pulse.py "your topic" --emit=json
 
 # Save report to disk
-python3 ~/.hermes/skills/last30days/scripts/last30days.py "your topic" --save-dir ~/Documents/research/
+python3 ~/.hermes/skills/pulse/scripts/pulse.py "your topic" --save-dir ~/Documents/research/
 ```

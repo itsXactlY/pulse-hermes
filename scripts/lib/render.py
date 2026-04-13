@@ -1,4 +1,4 @@
-"""Terminal-friendly rendering for last30days reports."""
+"""Terminal-friendly rendering for pulse reports."""
 
 from __future__ import annotations
 
@@ -118,7 +118,7 @@ def render_compact(report: Report, cluster_limit: int = 8) -> str:
     """Render compact report for terminal display."""
     non_empty = [s for s, items in sorted(report.items_by_source.items()) if items]
     lines = [
-        f"=== last30days: {report.topic} ===",
+        f"=== pulse: {report.topic} ===",
         f"Date range: {report.range_from} to {report.range_to}",
         f"Sources: {len(non_empty)} active ({', '.join(_source_label(s) for s in non_empty)})",
         "",
@@ -161,7 +161,7 @@ def render_full(report: Report) -> str:
     """Render full report with all items by source."""
     non_empty = [s for s, items in sorted(report.items_by_source.items()) if items]
     lines = [
-        f"=== last30days FULL REPORT: {report.topic} ===",
+        f"=== pulse FULL REPORT: {report.topic} ===",
         f"Date range: {report.range_from} to {report.range_to}",
         f"Sources: {len(non_empty)} active ({', '.join(_source_label(s) for s in non_empty)})",
         "",

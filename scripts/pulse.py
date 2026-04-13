@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""last30days v3.0.0 - Hermes Agent edition.
+"""pulse v3.0.0 - Hermes Agent edition.
 
 Research any topic across Reddit, Hacker News, Polymarket, GitHub, web, and news.
 Scores by real engagement metrics - upvotes, points, volume, stars.
 
 Usage:
-    python3 last30days.py <topic> [options]
+    python3 pulse.py <topic> [options]
 
 Options:
     --emit MODE     Output: compact (default), json, md, full, context
@@ -62,7 +62,7 @@ def save_output(report, emit: str, save_dir: str) -> Path:
     slug = slugify(report.topic)
     extension = "json" if emit == "json" else "md"
 
-    out_path = path / f"{slug}-last30days.{extension}"
+    out_path = path / f"{slug}-pulse.{extension}"
 
     if emit == "json":
         content = render.render_json(report)

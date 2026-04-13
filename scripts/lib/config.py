@@ -1,4 +1,4 @@
-"""Configuration and API key management for last30days skill."""
+"""Configuration and API key management for pulse skill."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-CONFIG_DIR = Path.home() / ".config" / "last30days"
+CONFIG_DIR = Path.home() / ".config" / "pulse"
 CONFIG_FILE = CONFIG_DIR / ".env"
 
 

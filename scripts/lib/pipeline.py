@@ -1,4 +1,4 @@
-"""v3 orchestration pipeline for last30days.
+"""v3 orchestration pipeline for pulse.
 
 Coordinates discovery, enrichment, normalization, scoring, deduplication,
 fusion, clustering, and rendering.

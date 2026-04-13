@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Basic integration tests for last30days."""
+"""Basic integration tests for pulse."""
 
 import sys
 from pathlib import Path
@@ -157,7 +157,7 @@ def test_render():
 
 
 if __name__ == "__main__":
-    print("Running last30days tests...\n")
+    print("Running pulse tests...\n")
     tests = [
         test_schema,
         test_dates,

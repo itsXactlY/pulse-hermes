@@ -1,4 +1,4 @@
-"""Logging utilities for last30days skill."""
+"""Logging utilities for pulse skill."""
 
 import os
 import sys
@@ -25,11 +25,11 @@ def source_log(source: str, msg: str) -> None:
 
 def info(msg: str) -> None:
     """Log info message to stderr."""
-    sys.stderr.write(f"[last30days] {msg}\n")
+    sys.stderr.write(f"[pulse] {msg}\n")
     sys.stderr.flush()
 
 
 def warn(msg: str) -> None:
     """Log warning to stderr."""
-    sys.stderr.write(f"[last30days] WARNING: {msg}\n")
+    sys.stderr.write(f"[pulse] WARNING: {msg}\n")
     sys.stderr.flush()

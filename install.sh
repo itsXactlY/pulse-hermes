@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# last30days installer - Hermes Edition
+# pulse installer - Hermes Edition
 # Proof of concept. Hermes should handle the rest autonomously.
 set -euo pipefail
 
@@ -9,7 +9,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${BOLD}last30days v0.0.1 - Hermes Edition${NC}"
+echo -e "${BOLD}pulse v0.0.1 - Hermes Edition${NC}"
 echo -e "${YELLOW}Proof of Concept installer${NC}"
 echo ""
 
@@ -54,14 +54,14 @@ print('all OK')
 echo -e "${GREEN}✓${NC}"
 
 # Create config directory
-CONFIG_DIR="$HOME/.config/last30days"
+CONFIG_DIR="$HOME/.config/pulse"
 mkdir -p "$CONFIG_DIR"
 
 # Create .env template if not exists
 ENV_FILE="$CONFIG_DIR/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
     cat > "$ENV_FILE" << 'EOF'
-# last30days configuration
+# pulse configuration
 # Optional API keys - uncomment and fill in as needed
 
 # Web search (pick one):
@@ -83,16 +83,16 @@ fi
 # Test run
 echo ""
 echo -n "Running diagnostics... "
-"$PYTHON" "${SCRIPT_DIR}/scripts/last30days.py" --diagnose 2>/dev/null
+"$PYTHON" "${SCRIPT_DIR}/scripts/pulse.py" --diagnose 2>/dev/null
 echo ""
 
 # Symlink for easy access
 BIN_DIR="$HOME/.local/bin"
 mkdir -p "$BIN_DIR"
-SYMLINK="$BIN_DIR/last30days"
+SYMLINK="$BIN_DIR/pulse"
 if [[ ! -L "$SYMLINK" ]]; then
-    ln -sf "${SCRIPT_DIR}/scripts/last30days.py" "$SYMLINK"
-    chmod +x "${SCRIPT_DIR}/scripts/last30days.py"
+ln -sf "${SCRIPT_DIR}/scripts/pulse.py" "$SYMLINK"
+    chmod +x "${SCRIPT_DIR}/scripts/pulse.py"
     echo -e "${GREEN}✓${NC} Created symlink at $SYMLINK"
     echo -e "  ${YELLOW}Add to PATH if needed: export PATH=\"\$HOME/.local/bin:\$PATH\"${NC}"
 else
@@ -103,9 +103,9 @@ echo ""
 echo -e "${BOLD}Installation complete!${NC}"
 echo ""
 echo "Usage:"
-echo "  last30days \"your topic\""
-echo "  last30days \"bitcoin halving\" --depth deep"
-echo "  last30days --diagnose"
+echo "  pulse \"your topic\""
+echo "  pulse \"bitcoin halving\" --depth deep"
+echo "  pulse --diagnose"
 echo ""
 echo "Sources available without API keys: Reddit, Hacker News, Polymarket"
 echo "Optional: Add BRAVE_API_KEY, GITHUB_TOKEN, or NEWSAPI_KEY to $ENV_FILE"

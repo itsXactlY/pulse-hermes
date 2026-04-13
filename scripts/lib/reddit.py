@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from . import log
 
-USER_AGENT = "last30days-hermes/3.0 (research tool)"
+USER_AGENT = "pulse-hermes/3.0 (research tool)"
 
 DEPTH_LIMITS = {
     "quick": 10,

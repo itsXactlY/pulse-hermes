@@ -1,4 +1,4 @@
-"""HTTP utilities for last30days skill (stdlib only)."""
+"""HTTP utilities for pulse skill (stdlib only)."""
 
 import json
 import os
@@ -16,7 +16,7 @@ DEFAULT_TIMEOUT = 30
 MAX_RETRIES = 3
 MAX_429_RETRIES = 2
 RETRY_DELAY = 2.0
-USER_AGENT = "last30days-hermes/3.0 (Research Tool)"
+USER_AGENT = "pulse-hermes/3.0 (Research Tool)"
 
 DEBUG = os.environ.get("LAST30DAYS_DEBUG", "").lower() in ("1", "true", "yes")
 

@@ -1,4 +1,4 @@
-# last30days v0.0.1 — Hermes Edition
+# pulse v0.0.1 — Hermes Edition
 
 > **⚠️ PROOF OF CONCEPT — CLONE WARNING**
 >
@@ -16,14 +16,14 @@ Rank it with Weighted Reciprocal Rank Fusion.
 Cluster the results thematically.
 Deliver a research briefing in seconds.
 
-Google aggregates editors. last30days searches people.
+Google aggregates editors. pulse searches people.
 
 ## What This Does
 
 ```
-$ last30days "OpenAI Codex"
+$ pulse "OpenAI Codex"
 
-=== last30days: OpenAI Codex ===
+=== pulse: OpenAI Codex ===
 Date range: 2026-03-14 to 2026-04-13
 Sources: 3 active (Hacker News, Polymarket, Reddit)
 
@@ -62,27 +62,27 @@ Three sources work out of the box with zero configuration.
 
 ```bash
 # Clone and install
-git clone <repo-url> ~/projects/last30days
-cd ~/projects/last30days
+git clone <repo-url> ~/projects/pulse
+cd ~/projects/pulse
 bash install.sh
 
 # Run it
-last30days "your topic"
-last30days "bitcoin halving 2028" --depth deep
-last30days "React Server Components" --sources reddit,hackernews
-last30days --diagnose
+pulse "your topic"
+pulse "bitcoin halving 2028" --depth deep
+pulse "React Server Components" --sources reddit,hackernews
+pulse --diagnose
 ```
 
 ### No Install (Direct)
 
 ```bash
-python3 ~/projects/last30days/scripts/last30days.py "your topic"
+python3 ~/projects/pulse/scripts/pulse.py "your topic"
 ```
 
 ## CLI Reference
 
 ```
-last30days <topic> [options]
+pulse <topic> [options]
 
 Options:
   --emit MODE       Output mode: compact (default), json, full, context
@@ -96,7 +96,7 @@ Options:
 
 ## Configuration
 
-Optional API keys go in `~/.config/last30days/.env`:
+Optional API keys go in `~/.config/pulse/.env`:
 
 ```bash
 # Web search (pick one):
@@ -129,9 +129,9 @@ Results from multiple sources and subqueries are fused using **Weighted Reciproc
 ## Architecture
 
 ```
-last30days/
+pulse/
 ├── scripts/
-│   ├── last30days.py        # CLI entry point
+│   ├── pulse.py        # CLI entry point
 │   └── lib/
 │       ├── __init__.py
 │       ├── schema.py        # Data models (SourceItem, Candidate, Cluster, Report)
@@ -226,13 +226,13 @@ Topic Input
 
 ```bash
 # Inject as context for another agent/skill
-last30days "your topic" --emit=context
+pulse "your topic" --emit=context
 
 # Get structured JSON
-last30days "your topic" --emit=json
+pulse "your topic" --emit=json
 
 # Save to disk
-last30days "your topic" --save-dir ~/Documents/research/
+pulse "your topic" --save-dir ~/Documents/research/
 ```
 
 ## Known Limitations (PoC)
