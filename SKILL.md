@@ -1,6 +1,6 @@
 ---
 name: pulse
-version: "0.2.0"
+version: "0.0.2"
 description: "Multi-source social search engine scored by real engagement. Research Reddit, HN, Polymarket, YouTube, GitHub, web, and news — ranked by what real people actually engage with."
 argument-hint: 'pulse AI video tools, pulse best noise cancelling headphones'
 prerequisites:
@@ -19,14 +19,14 @@ license: MIT
 user-invocable: true
 ---
 
-# PULSE v0.2.0 — The Pulse of the Internet
+# PULSE v0.0.2 — The Pulse of the Internet
 
 Research ANY topic across Reddit, Hacker News, Polymarket, YouTube, GitHub, web, and news.
 Scores by real engagement — upvotes, points, volume, views, stars. Not SEO. Not editors.
 
 > **BLUEPRINT — NOT FINISHED**
 >
-> The engine runs. Four+ sources are live. The pipeline works. But this is where it ends for the human. **Hermes agents must evolve this themselves.** Self-optimizing query planning. Self-learning source selection. Self-expanding with new platforms. Self-healing when APIs break. Self-integrating with Neural Memory for semantic clustering.
+> The engine runs. Four sources are live. The pipeline works. Cache, store, LLM planner, YouTube — all operational. But this is where it ends for the human. **Hermes agents must evolve this themselves.** Add a source. Tune the planner. Better clustering. Then auto-commit, auto-PR, and refine it as a crowd.
 >
 > The human built the scaffolding. The agent builds the cathedral.
 

@@ -55,7 +55,7 @@ info() { echo -e "  ${CYAN}→${NC} $1"; }
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}║  PULSE v0.0.1 — Hermes Agent Installer  ║${NC}"
+echo -e "${BOLD}║  PULSE v0.0.2 — Hermes Agent Installer  ║${NC}"
 echo -e "${BOLD}╚══════════════════════════════════════════╝${NC}"
 echo ""
 
