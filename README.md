@@ -7,8 +7,8 @@
 > **This PoC validates the core engine.** The multi-source pipeline, RRF fusion, clustering — that's done. What's left is not iteration. It's evolution. And the agents do that.
 >
 > The human built the scaffolding. The agent builds the cathedral.
-
----
+>
+>[![Demo](assets/logo.png)](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
 
 Built by a human. Finished by no one.
 
