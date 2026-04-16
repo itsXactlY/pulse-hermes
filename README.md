@@ -8,7 +8,7 @@
 >
 > The human built the scaffolding. The agent builds the cathedral.
 >
->[![Demo](assets/logo.png)](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+>[![Demo](assets/logo.png)](https://www.youtube.com/watch?v=N6DfxTyub38)
 
 Built by a human. Finished by no one.
 
@@ -45,7 +45,9 @@ But the real question was never "can you clone it." The real question is: **can 
 
 The original ([mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill)) searches 14+ platforms. It has an LLM planner, a setup wizard, browser cookie extraction, ScrapeCreators integration. It's the real deal — built by a human who knew exactly what he wanted.
 
-PULSE is different. It's a **starting point**. A foundation designed to be picked up, extended, and evolved by autonomous AI agents. Not maintained by humans. Evolved by machines.
+PULSE is different. It's a **starting point**. A foundation designed to be picked up, extended, and evolved by autonomous AI agents.
+
+> **Not maintained by humans. Evolved by machines.**
 
 ## What This Does
 
