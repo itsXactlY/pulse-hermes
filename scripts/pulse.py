@@ -73,6 +73,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Max research rounds for --crew/--iterative mode (default: 3)")
     parser.add_argument("--breaking", action="store_true",
                         help="Breaking-news mode: poll every 5 min, track velocity, alert on spikes >3x baseline")
+    parser.add_argument("--yolo", action="store_true",
+                        help="Skip human approval prompts — run fully autonomous")
     return parser
 
 
@@ -291,6 +293,24 @@ def main() -> int:
     if not topic:
         parser.print_usage(sys.stderr)
         return 2
+
+    # Human approval gate (unless --yolo)
+    if not args.yolo and sys.stdin.isatty():
+        print()
+        print("  PULSE will run autonomously across multiple sources.")
+        print("  Some operations may require human approval (API calls, network access, etc.).")
+        print()
+        print("  Tip: use --yolo to skip this prompt and run fully autonomous.")
+        print()
+        try:
+            confirm = input("  Continue? [Y/n] ").strip().lower()
+            if confirm and confirm not in ("y", "j", "yes", "ja"):
+                print("  Aborted.")
+                return 0
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Aborted.")
+            return 0
+        print()
 
     # Parse requested sources
     requested = None

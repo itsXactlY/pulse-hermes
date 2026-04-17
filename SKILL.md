@@ -1,7 +1,7 @@
 ---
 name: pulse
-version: "0.0.3"
-description: "Multi-source social search engine scored by real engagement. 10 sources: Reddit, HN, Polymarket, YouTube, GitHub, ArXiv, Lobsters, RSS, web, news."
+version: "0.0.4"
+description: "Multi-source social search engine scored by real engagement. 15 sources: Reddit, HN, Polymarket, YouTube, GitHub, ArXiv, Lobsters, RSS, web, news, Bluesky, Dev.to, Lemmy, OpenAlex, Semantic Scholar, StackExchange, Manifold, Metaculus."
 prerequisites:
   commands: [python3]
 metadata:
@@ -20,15 +20,21 @@ license: MIT
 user-invocable: true
 ---
 
-# PULSE v0.0.3 — The Pulse of the Internet
+# PULSE v0.0.4 — The Pulse of the Internet
 
-Research ANY topic across 10 sources. Scores by real engagement — not SEO, not editors.
+Research ANY topic across 15 sources. Scores by real engagement — not SEO, not editors.
 
-> **EVOLUTION BUILD — FORGED FROM v0.0.2, NOW 10 SOURCES**
+> **EVOLUTION BUILD — FORGED FROM v0.0.3, NOW 15 SOURCES + 6 MAJOR UPGRADES**
 >
-> v0.0.3: Three new sources (ArXiv, Lobsters, RSS). Three-pass dedup. Engagement velocity. Self-learning source selection. Neural memory integration.
+> v0.0.4: Query Router, Adaptive Lookback, 7-Signal Scoring, Iterative Retrieval, Trend Detection, Multi-Agent Research Crew. 1,430 new lines.
 >
 > The human built the scaffolding. The agent builds the cathedral.
+
+## CRITICAL: Project Path
+
+**The project is at `~/projects/pulse` (remote: `pulse-hermes.git`).**
+
+⚠️ **SYMLINK WARNING:** If a `lib` symlink exists at project root pointing to `scripts/lib`, REMOVE IT before spawning parallel agents. Agents using `write_file` on `lib/foo.py` will silently overwrite `scripts/lib/foo.py` through the symlink, and `git checkout` will destroy the work. Learned the hard way — 9 agents, 2 rounds, symlink ate everything.
 
 ## Why This Exists
 
