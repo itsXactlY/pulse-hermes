@@ -1,12 +1,12 @@
 ---
 name: pulse
-version: "0.0.2"
-description: "Multi-source social search engine scored by real engagement. Research Reddit, HN, Polymarket, YouTube, GitHub, web, and news — ranked by what real people actually engage with, not SEO."
+version: "0.0.3"
+description: "Multi-source social search engine scored by real engagement. 10 sources: Reddit, HN, Polymarket, YouTube, GitHub, ArXiv, Lobsters, RSS, web, news."
 prerequisites:
   commands: [python3]
 metadata:
   hermes:
-    tags: [research, deep-research, reddit, hackernews, polymarket, github, youtube, news, trends, social-media, web-search, multi-source, citations]
+    tags: [research, deep-research, reddit, hackernews, polymarket, github, youtube, arxiv, lobsters, rss, news, trends, social-media, web-search, multi-source, citations, neural-memory]
     related_skills: [polymarket, xitter, github-code-review, arxiv, neural-memory-first]
     requires:
       env:
@@ -15,19 +15,18 @@ metadata:
         - NEWSAPI_KEY      # Optional: news articles
         - OPENROUTER_API_KEY # Optional: LLM planner
 argument-hint: 'pulse AI video tools, pulse best noise cancelling headphones'
-homepage: https://github.com/itsXactlY/pulse
+homepage: https://github.com/itsXactlY/pulse-hermes
 license: MIT
 user-invocable: true
 ---
 
-# PULSE v0.0.2 — The Pulse of the Internet
+# PULSE v0.0.3 — The Pulse of the Internet
 
-Research ANY topic across Reddit, Hacker News, Polymarket, YouTube, GitHub, web, and news.
-Scores by real engagement — upvotes, points, volume, views, stars. Not SEO. Not editors.
+Research ANY topic across 10 sources. Scores by real engagement — not SEO, not editors.
 
-> **BLUEPRINT — NOW A CROWD PROJECT**
+> **EVOLUTION BUILD — FORGED FROM v0.0.2, NOW 10 SOURCES**
 >
-> The engine runs. Four sources are live. Cache, store, LLM planner, YouTube — all operational. But this is where it ends for the human. **Hermes agents must evolve this themselves.** Add a source. Tune the planner. Better clustering. Then auto-commit, auto-PR, and refine it as a crowd.
+> v0.0.3: Three new sources (ArXiv, Lobsters, RSS). Three-pass dedup. Engagement velocity. Self-learning source selection. Neural memory integration.
 >
 > The human built the scaffolding. The agent builds the cathedral.
 
@@ -36,7 +35,7 @@ Scores by real engagement — upvotes, points, volume, views, stars. Not SEO. No
 Independent reimplementation of [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill) — ground-up reconstruction, not a fork. Pure Python stdlib, zero dependencies, designed for agent evolution.
 
 Original: 14+ sources, ~15,000 lines, built by a human who knew exactly what he wanted.
-PULSE: 7 sources, ~6,300 lines, built to be picked up and evolved by machines.
+PULSE: 10 sources, ~9,370 lines, built to be picked up and evolved by machines.
 
 ## Sources
 
@@ -47,10 +46,11 @@ PULSE: 7 sources, ~6,300 lines, built to be picked up and evolved by machines.
 | **Polymarket** | Real-money prediction market odds | No |
 | **YouTube** | Video transcripts, view counts, deep dives | No |
 | **GitHub** | Repos, issues, PRs, star velocity | Token |
+| **ArXiv** | Academic papers, ML/AI research, peer-reviewed signal | No |
+| **Lobsters** | Curated tech links, systems programming, quality community | No |
+| **RSS/Blogs** | Technical blogs, engineering insights, expert opinions | No |
 | **Web** | Editorial coverage (Brave/Serper/Exa) | Key |
 | **News** | NewsAPI articles from major publications | Key |
-
-Four sources work out of the box. Zero configuration.
 
 ## When To Use
 
@@ -58,7 +58,7 @@ Four sources work out of the box. Zero configuration.
 - User wants prediction market odds (Polymarket)
 - User wants a research briefing before a meeting, trip, or decision
 - User asks to compare tools, products, or ideas across communities
-- User wants to know what's trending in tech (HN), politics (Polymarket), or culture (Reddit)
+- User wants to know what's trending in tech (HN), politics (Polymarket), culture (Reddit), or research (ArXiv)
 
 ## Usage
 
@@ -66,7 +66,7 @@ Four sources work out of the box. Zero configuration.
 # Direct CLI
 pulse "your topic"
 pulse "bitcoin halving 2028" --depth deep
-pulse "React Server Components" --sources reddit,hackernews
+pulse "React Server Components" --sources reddit,hackernews,arxiv
 pulse --diagnose
 pulse --setup          # First-run wizard
 pulse --stats          # Cache + store stats
@@ -77,13 +77,14 @@ pulse --trending       # Trending findings
 pulse "your topic" --emit=context   # Compact snippet for other skills
 pulse "your topic" --emit=json      # Machine-readable for programmatic use
 pulse "your topic" --emit=full      # Save to disk or audit
+pulse "your topic" --emit=md        # Markdown report
 ```
 
 ## Options
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--emit MODE` | Output: compact, json, full, context | compact |
+| `--emit MODE` | Output: compact, json, full, md, context | compact |
 | `--depth MODE` | Depth: quick, default, deep | default |
 | `--sources LIST` | Comma-separated sources | all available |
 | `--lookback N` | Days to look back | 30 |
@@ -124,16 +125,17 @@ OPENROUTER_API_KEY=your_key  # LLM planner (cheapest cloud)
 
 Ollama is auto-detected — no key needed for local LLM planning.
 
-## How Scoring Works
+## How Scoring Works (v0.0.3)
 
-Four signals fused via Weighted Reciprocal Rank Fusion:
+Five signals fused via Weighted Reciprocal Rank Fusion:
 
-- **Local Relevance** (35%): Token overlap with topic
-- **Freshness** (25%): Recency within lookback window
+- **Local Relevance** (30%): Bigram/trigram token overlap with topic
+- **Freshness** (20%): Recency within lookback window
 - **Engagement** (25%): Platform metrics (upvotes, points, volume, views, stars)
-- **Source Quality** (15%): Baseline trust in data source
+- **Engagement Velocity** (10%): How fast engagement grows per day
+- **Source Quality** (15%): Baseline trust in data source + self-learning weights
 
-Items appearing across multiple sources get a natural boost from RRF.
+Three-pass deduplication: URL exact -> Content hash -> Cosine similarity.
 
 ## Architecture
 
@@ -142,29 +144,38 @@ scripts/
   pulse.py            # CLI entry point
   auto_commit.sh      # Auto commit + test + PR (for agents)
   hermes_bootstrap.sh # Auto-discovery for new Hermes agents
+  polymarket_deep_scan.py # Deep Polymarket keyword scanner
   lib/
     schema.py          # Data models
-    pipeline.py        # Orchestrator (parallel → normalize → score → fuse → cluster)
+    pipeline.py        # Orchestrator
     planner.py         # Heuristic planner
     llm_planner.py     # LLM planner (Ollama/OpenRouter/OpenAI)
     normalize.py       # Source normalizers
-    score.py           # Multi-signal scoring
-    dedupe.py          # Near-duplicate detection
+    score.py           # Multi-signal scoring (v0.0.3)
+    dedupe.py          # Three-pass deduplication
     fusion.py          # Weighted RRF (k=60)
-    cluster.py         # Content clustering
-    render.py          # Output rendering
+    cluster.py         # Cosine similarity clustering
+    render.py          # Output rendering (compact/json/full/md)
     cache.py           # SQLite cache (24h TTL)
     store.py           # Persistent research store
     ui.py              # Live progress display
     setup.py           # First-run setup wizard
     config.py          # Environment management
-    reddit.py          # Reddit (free)
-    hackernews.py      # HN (free)
-    polymarket.py      # Polymarket (free)
-    youtube.py         # YouTube via yt-dlp (free)
-    github.py          # GitHub
-    web_search.py      # Brave/Serper/Exa
-    news.py            # NewsAPI
+    relevance.py       # Bigram/trigram relevance + cosine similarity
+    self_learn.py      # Self-learning source weights
+    neural_memory.py   # Neural memory integration
+    filter.py          # Content filtering
+    raw_filter.py      # Raw content filtering
+    log.py             # Logging
+    dates.py           # Date utilities
+    http.py            # HTTP client
+    # Sources (10):
+    reddit.py, hackernews.py, polymarket.py, youtube.py,
+    github.py, web_search.py, news.py,
+    arxiv.py, lobsters.py, rss.py
+    # Extended sources (optional):
+    bluesky.py, devto.py, lemmy.py, manifold.py,
+    metaculus.py, openalex.py, sem_scholar.py, stackexchange.py
 ```
 
 ## Contributing (For Agents)
@@ -174,10 +185,11 @@ scripts/
 bash scripts/auto_commit.sh "feat: add Bluesky source via AT Protocol"
 ```
 
-Tests run → commit → push → PR. All automated. See CONTRIBUTING.md for details.
+Tests run -> commit -> push -> PR. All automated. See CONTRIBUTING.md for details.
 
 ## See Also
 
+- [itsXactlY/pulse-hermes](https://github.com/itsXactlY/pulse-hermes) — Main repo
 - [itsXactlY/neural-memory](https://github.com/itsXactlY/neural-memory) — For semantic clustering
 - [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill) — The original
 - Existing Hermes skills: `polymarket`, `xitter`, `github-code-review`, `arxiv`

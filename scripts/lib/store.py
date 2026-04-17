@@ -73,6 +73,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             title TEXT NOT NULL,
             title_hash TEXT NOT NULL,
             url TEXT,
+            url_hash TEXT,
             body TEXT,
             author TEXT,
             container TEXT,
@@ -92,6 +93,7 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_findings_topic ON findings(topic_id);
         CREATE INDEX IF NOT EXISTS idx_findings_hash ON findings(title_hash);
+        CREATE INDEX IF NOT EXISTS idx_findings_url_hash ON findings(url_hash);
         CREATE INDEX IF NOT EXISTS idx_findings_source ON findings(source);
         CREATE INDEX IF NOT EXISTS idx_topics_hash ON topics(topic_hash);
         CREATE INDEX IF NOT EXISTS idx_runs_topic ON runs(topic_id);
@@ -108,6 +110,14 @@ def _title_hash(source: str, title: str) -> str:
     """Hash title for cross-run dedup."""
     raw = f"{source}:{title.lower().strip()}"
     return hashlib.md5(raw.encode()).hexdigest()
+
+
+def _url_hash(url: str) -> str:
+    """Hash URL for cross-source dedup."""
+    if not url:
+        return ""
+    normalized = url.lower().rstrip("/").split("?")[0].split("#")[0]
+    return hashlib.md5(normalized.encode()).hexdigest()
 
 
 def get_or_create_topic(topic: str) -> Dict[str, Any]:
@@ -179,7 +189,7 @@ def store_findings(
     run_id: int,
     items: List[SourceItem],
 ) -> Dict[str, int]:
-    """Store findings, dedup against previous runs.
+    """Store findings, dedup against previous runs (title + URL).
 
     Returns: {"new": N, "updated": N, "duplicate": N}
     """
@@ -189,10 +199,18 @@ def store_findings(
 
     for item in items:
         h = _title_hash(item.source, item.title)
+        uh = _url_hash(item.url)
 
+        # Check title hash first
         existing = conn.execute(
             "SELECT id, seen_count FROM findings WHERE title_hash = ?", (h,)
         ).fetchone()
+
+        # If no title match, check URL hash
+        if not existing and uh:
+            existing = conn.execute(
+                "SELECT id, seen_count FROM findings WHERE url_hash = ?", (uh,)
+            ).fetchone()
 
         if existing:
             fid, seen = existing
@@ -207,13 +225,13 @@ def store_findings(
         else:
             conn.execute(
                 """INSERT INTO findings
-                   (topic_id, run_id, source, title, title_hash, url, body, author,
+                   (topic_id, run_id, source, title, title_hash, url, url_hash, body, author,
                     container, published_at, engagement_json, relevance, freshness,
                     engagement_score, source_quality, local_rank_score, first_seen, last_seen)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     topic_id, run_id, item.source, item.title, h,
-                    item.url, item.body[:500], item.author, item.container,
+                    item.url, uh, item.body[:500], item.author, item.container,
                     item.published_at, json.dumps(item.engagement),
                     item.local_relevance or 0, item.freshness or 0,
                     item.engagement_score or 0, item.source_quality or 0,

@@ -1,11 +1,16 @@
-"""Cluster related candidates into thematic groups."""
+"""Cluster related candidates into thematic groups.
+
+Uses cosine similarity instead of Jaccard for better semantic matching.
+Generates meaningful cluster titles using TF-IDF-like term extraction.
+"""
 
 import hashlib
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import Dict, List, Set
 
 from . import log
+from .relevance import cosine_similarity, _tokenize
 from .schema import Candidate, Cluster
 
 
@@ -13,69 +18,67 @@ def _source_log(msg: str):
     log.source_log("Cluster", msg)
 
 
-def _normalize_for_cluster(text: str) -> str:
-    """Normalize text for clustering."""
-    text = text.lower().strip()
-    text = re.sub(r"https?://\S+", "", text)
-    text = re.sub(r"[^\w\s]", " ", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
+def _extract_key_terms(text: str, top_n: int = 5) -> List[str]:
+    """Extract significant terms using TF-like scoring.
 
+    Returns the top_n most informative terms (excluding stop words).
+    """
+    tokens = _tokenize(text)
+    if not tokens:
+        return []
 
-def _extract_key_terms(text: str, min_len: int = 3) -> Set[str]:
-    """Extract significant terms from text."""
-    words = _normalize_for_cluster(text).split()
-    stops = {
-        "the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "for",
-        "of", "and", "or", "but", "not", "with", "this", "that", "it", "be", "by",
-        "from", "as", "do", "has", "had", "have", "will", "would", "could", "should",
-        "been", "being", "have", "has", "had", "do", "does", "did", "will", "would",
-        "could", "should", "may", "might", "must", "can", "need", "dare", "ought",
-        "about", "above", "after", "again", "all", "also", "am", "any", "because",
-        "before", "between", "both", "each", "few", "more", "most", "other", "some",
-        "such", "than", "too", "very", "just", "into", "over", "own", "same", "so",
-        "still", "up", "down", "out", "off", "now", "then", "here", "there", "when",
-        "where", "why", "how", "what", "which", "who", "whom", "while", "during",
-    }
-    return {w for w in words if len(w) >= min_len and w not in stops}
+    # Count term frequencies
+    freq = Counter(tokens)
 
+    # Score: raw frequency * word length bonus (longer words are more specific)
+    scored = []
+    for word, count in freq.items():
+        # Skip very short or very common words
+        if len(word) < 3:
+            continue
+        # Length bonus: longer words are more specific
+        length_bonus = min(2.0, len(word) / 5.0)
+        score = count * length_bonus
+        scored.append((score, word))
 
-def _compute_similarity(terms1: Set[str], terms2: Set[str]) -> float:
-    """Compute Jaccard similarity between two term sets."""
-    if not terms1 or not terms2:
-        return 0.0
-    intersection = terms1 & terms2
-    union = terms1 | terms2
-    return len(intersection) / len(union) if union else 0.0
+    scored.sort(reverse=True)
+    return [word for _, word in scored[:top_n]]
 
 
 def _generate_cluster_title(candidates: List[Candidate]) -> str:
-    """Generate a human-readable title for a cluster."""
-    # Collect all terms and count frequency
-    term_counts: Dict[str, int] = defaultdict(int)
+    """Generate a meaningful cluster title from top terms.
+
+    Uses TF-weighted term extraction + concatenation of top 3-4 terms.
+    Falls back to the top candidate's title if no good terms found.
+    """
+    # Collect all text
+    all_text = []
     for c in candidates:
-        terms = _extract_key_terms(c.title)
-        for t in terms:
-            term_counts[t] += 1
+        all_text.append(c.title)
+        if c.snippet:
+            all_text.append(c.snippet[:100])
 
-    # Sort by frequency, take top 3
-    top_terms = sorted(term_counts.items(), key=lambda x: -x[1])[:3]
-    if top_terms:
-        return " ".join(t[0] for t in top_terms).title()
+    combined = " ".join(all_text)
+    terms = _extract_key_terms(combined, top_n=6)
 
-    # Fallback: use the top candidate's title
+    if terms:
+        # Use top 3-4 terms, title-cased
+        title_terms = terms[:4]
+        return " ".join(t.capitalize() for t in title_terms)
+
+    # Fallback: use the top candidate's title (truncated)
     return candidates[0].title[:60] if candidates else "Untitled"
 
 
 def cluster_candidates(
     candidates: List[Candidate],
-    similarity_threshold: float = 0.25,
+    similarity_threshold: float = 0.20,
 ) -> List[Cluster]:
-    """Cluster candidates by content similarity.
+    """Cluster candidates by content similarity using cosine similarity.
 
     Args:
         candidates: Ranked list of candidates
-        similarity_threshold: Minimum term overlap for clustering
+        similarity_threshold: Minimum cosine similarity for clustering
 
     Returns:
         List of Clusters sorted by score (descending)
@@ -83,11 +86,10 @@ def cluster_candidates(
     if not candidates:
         return []
 
-    # Pre-compute terms for each candidate
-    candidate_terms: Dict[str, Set[str]] = {}
+    # Pre-compute text representations
+    candidate_texts: Dict[str, str] = {}
     for c in candidates:
-        combined = f"{c.title} {c.snippet}"
-        candidate_terms[c.candidate_id] = _extract_key_terms(combined)
+        candidate_texts[c.candidate_id] = f"{c.title} {c.snippet}"
 
     # Union-Find for clustering
     parent: Dict[str, str] = {c.candidate_id: c.candidate_id for c in candidates}
@@ -103,25 +105,24 @@ def cluster_candidates(
         if px != py:
             parent[px] = py
 
-    # Compare all pairs (O(n^2) but fine for typical candidate counts)
+    # Compare all pairs using cosine similarity
     for i, c1 in enumerate(candidates):
         for c2 in candidates[i + 1:]:
-            sim = _compute_similarity(
-                candidate_terms.get(c1.candidate_id, set()),
-                candidate_terms.get(c2.candidate_id, set()),
-            )
+            text1 = candidate_texts.get(c1.candidate_id, "")
+            text2 = candidate_texts.get(c2.candidate_id, "")
+            sim = cosine_similarity(text1, text2)
             if sim >= similarity_threshold:
                 union(c1.candidate_id, c2.candidate_id)
 
-    # Also cluster by URL domain
+    # Also cluster by URL domain (same article from different sources)
     domain_groups: Dict[str, List[str]] = defaultdict(list)
     for c in candidates:
         if c.url:
-            # Extract domain
             try:
                 from urllib.parse import urlparse
                 domain = urlparse(c.url).netloc
-                if domain:
+                # Skip generic domains
+                if domain and domain not in ("www.youtube.com", "youtu.be", "github.com"):
                     domain_groups[domain].append(c.candidate_id)
             except Exception:
                 pass
@@ -142,12 +143,18 @@ def cluster_candidates(
         # Sort members by final_score
         members.sort(key=lambda c: c.final_score, reverse=True)
 
-        # Cluster score = max score + bonus for multiple sources
+        # Collect sources
         sources = set()
         for m in members:
             sources.update(m.sources if m.sources else [m.source])
-        source_bonus = 0.1 * (len(sources) - 1)
-        cluster_score = members[0].final_score + source_bonus
+
+        # Multi-source boost: items appearing across sources are more important
+        source_bonus = 0.12 * (len(sources) - 1)
+
+        # Size bonus: clusters with more items are more significant
+        size_bonus = min(0.15, 0.03 * (len(members) - 1))
+
+        cluster_score = members[0].final_score + source_bonus + size_bonus
 
         # Representative IDs: top 3 candidates
         rep_ids = [m.candidate_id for m in members[:3]]

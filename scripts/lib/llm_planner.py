@@ -24,10 +24,13 @@ Available sources and what they're best for:
 - web: General web search, news articles, blog posts
 - news: NewsAPI articles from major publications
 - youtube: Video content, tutorials, interviews, deep dives
+- arxiv: Academic papers, ML/AI research, scientific publications
+- lobsters: Curated tech links, systems programming, quality-focused community
+- rss: Technical blogs, engineering blogs, expert opinions
 
 Output ONLY valid JSON, no markdown fences:
 {
-  "intent": "general|prediction|comparison|person_research|product_research|news_tracking|learning",
+  "intent": "general|prediction|comparison|person_research|product_research|news_tracking|learning|academic",
   "subqueries": [
     {
       "label": "short_label",
@@ -47,8 +50,10 @@ Rules:
 - Include all available sources across subqueries
 - Weight sources higher where they're most relevant
 - For prediction topics, weight polymarket higher
-- For tech topics, weight hackernews and github higher
+- For tech topics, weight hackernews, lobsters, and github higher
+- For academic/research topics, weight arxiv and hackernews higher
 - For people, search github (activity), reddit (opinions), and web (coverage)
+- For blog/opinion topics, weight rss and lobsters higher
 - ranking_query should be the original topic for consistency
 """
 

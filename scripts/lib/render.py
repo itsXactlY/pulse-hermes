@@ -17,6 +17,17 @@ SOURCE_LABELS = {
     "youtube": "YouTube",
     "web": "Web",
     "news": "News",
+    "arxiv": "ArXiv",
+    "lobsters": "Lobsters",
+    "rss": "RSS/Blogs",
+    "openalex": "OpenAlex",
+    "sem_scholar": "Semantic Scholar",
+    "manifold": "Manifold",
+    "metaculus": "Metaculus",
+    "bluesky": "Bluesky",
+    "stackexchange": "Stack Exchange",
+    "lemmy": "Lemmy",
+    "devto": "Dev.to",
 }
 
 
@@ -195,7 +206,7 @@ def render_full(report: Report) -> str:
     lines.append("=== ALL ITEMS BY SOURCE ===")
     lines.append("")
 
-    source_order = ["reddit", "hackernews", "polymarket", "github", "youtube", "web", "news"]
+    source_order = ["reddit", "hackernews", "polymarket", "github", "youtube", "arxiv", "openalex", "sem_scholar", "manifold", "metaculus", "lobsters", "stackexchange", "bluesky", "lemmy", "devto", "rss", "web", "news"]
     for source in source_order:
         items = report.items_by_source.get(source, [])
         if not items:
@@ -263,6 +274,97 @@ def render_json(report: Report) -> str:
     import json
     from .schema import to_dict
     return json.dumps(to_dict(report), indent=2, sort_keys=True, default=str)
+
+
+def render_markdown(report: Report, cluster_limit: int = 10) -> str:
+    """Render report as Markdown — suitable for saving, sharing, or posting."""
+    candidate_by_id = {c.candidate_id: c for c in report.ranked_candidates}
+    non_empty = [s for s, items in sorted(report.items_by_source.items()) if items]
+
+    lines = [
+        f"# PULSE Research: {report.topic}",
+        "",
+        f"**Date range:** {report.range_from} to {report.range_to}  ",
+        f"**Sources:** {len(non_empty)} active ({', '.join(_source_label(s) for s in non_empty)})  ",
+        f"**Generated:** {report.generated_at[:19]}",
+        "",
+    ]
+
+    if report.warnings:
+        lines.append("> **Warnings:**")
+        for w in report.warnings:
+            lines.append(f"> - {w}")
+        lines.append("")
+
+    lines.append("## Evidence Clusters")
+    lines.append("")
+
+    for index, cluster in enumerate(report.clusters[:cluster_limit], start=1):
+        n_items = len(cluster.candidate_ids)
+        src_labels = ", ".join(_source_label(s) for s in cluster.sources)
+        lines.append(f"### {index}. {cluster.title}")
+        lines.append(f"*Score: {cluster.score:.2f} | {n_items} items | {src_labels}*")
+        if cluster.uncertainty:
+            lines.append(f"*⚠️ Uncertainty: {cluster.uncertainty}*")
+        lines.append("")
+
+        for rep_i, cid in enumerate(cluster.representative_ids[:3], start=1):
+            candidate = candidate_by_id.get(cid)
+            if not candidate:
+                continue
+            src_label = _source_label(candidate.source)
+            eng_str = ""
+            if candidate.source_items:
+                eng_str = _format_engagement(candidate.source_items[0])
+
+            lines.append(f"**{rep_i}. {candidate.title}**")
+            detail_parts = [f"[{src_label}]"]
+            if eng_str:
+                detail_parts.append(eng_str)
+            lines.append(f"*{' | '.join(detail_parts)}*")
+            if candidate.url:
+                lines.append(f"[Link]({candidate.url})")
+            if candidate.snippet:
+                lines.append(f"> {candidate.snippet[:300]}")
+
+            # Top comments
+            if candidate.source_items:
+                for item in candidate.source_items:
+                    top_comments = item.metadata.get("top_comments", [])
+                    if top_comments:
+                        for tc in top_comments[:2]:
+                            excerpt = tc.get("excerpt", tc.get("text", ""))[:200]
+                            score_val = tc.get("score", "")
+                            if excerpt:
+                                lines.append(f"> *({score_val} upvotes)* {excerpt}")
+                        break
+
+            # Polymarket odds
+            if candidate.source == "polymarket" and candidate.source_items:
+                prices = candidate.source_items[0].metadata.get("outcome_prices", [])
+                if prices:
+                    odds_parts = []
+                    for name, price in prices[:4]:
+                        if isinstance(price, (int, float)) and price > 0:
+                            label = name.split(": ", 1)[-1] if ": " in name else name
+                            odds_parts.append(f"{label}: {price * 100:.0f}%")
+                    if odds_parts:
+                        lines.append(f"**Odds:** {' | '.join(odds_parts)}")
+
+            lines.append("")
+
+    # Source summary
+    total_items = sum(len(items) for items in report.items_by_source.values())
+    lines.append("---")
+    lines.append(f"**Total:** {total_items} items across {len(non_empty)} sources")
+
+    if report.errors_by_source:
+        lines.append("")
+        lines.append("### Errors")
+        for source, error in report.errors_by_source.items():
+            lines.append(f"- **{_source_label(source)}:** {error}")
+
+    return "\n".join(lines).strip() + "\n"
 
 
 def render_context(report: Report, cluster_limit: int = 6) -> str:

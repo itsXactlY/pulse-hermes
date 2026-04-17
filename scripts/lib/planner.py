@@ -19,17 +19,34 @@ SOURCE_CAPABILITIES = {
     "youtube": {"types": ["videos", "tutorials", "interviews", "reviews", "deep-dives"]},
     "web": {"types": ["everything"]},
     "news": {"types": ["news", "events", "coverage"]},
+    "arxiv": {"types": ["papers", "research", "academic", "science", "ml", "ai"]},
+    "lobsters": {"types": ["tech", "programming", "systems", "rust", "databases"]},
+    "rss": {"types": ["blogs", "opinions", "technical-writing", "engineering"]},
+    "openalex": {"types": ["papers", "research", "academic", "citations", "scholarly"]},
+    "sem_scholar": {"types": ["papers", "ai-research", "citations", "tldr", "nlp"]},
+    "manifold": {"types": ["predictions", "markets", "forecasts", "ai", "tech"]},
+    "metaculus": {"types": ["predictions", "forecasts", "expert", "events", "geopolitics"]},
+    "bluesky": {"types": ["social", "opinions", "trends", "tech", "news"]},
+    "stackexchange": {"types": ["q&a", "programming", "devops", "sysadmin", "technical"]},
+    "lemmy": {"types": ["discussions", "opinions", "tech", "communities", "federation"]},
+    "devto": {"types": ["blogs", "tutorials", "programming", "webdev", "career"]},
 }
 
 # Topic patterns that map to preferred sources
 TOPIC_PATTERNS = {
-    r"(predict|odds|forecast|chance|probability|will .* win|bet)": ["polymarket", "reddit", "web"],
-    r"(code|repo|github|programming|developer|open.?source)": ["github", "hackernews", "reddit"],
-    r"(startup|launch|product|show HN)": ["hackernews", "reddit", "web"],
-    r"(politic|election|government|president|congress)": ["polymarket", "news", "reddit"],
-    r"(crypto|bitcoin|ethereum|blockchain|defi)": ["polymarket", "reddit", "hackernews"],
-    r"(review|recommend|best|top|compare|vs)": ["reddit", "web", "news"],
-    r"(news|announce|release|update|breaking)": ["news", "reddit", "hackernews", "web"],
+    r"(predict|odds|forecast|chance|probability|will .* win|bet)": ["polymarket", "manifold", "metaculus", "reddit", "web"],
+    r"(code|repo|github|programming|developer|open.?source)": ["github", "hackernews", "lobsters", "stackexchange", "reddit", "devto"],
+    r"(startup|launch|product|show HN)": ["hackernews", "reddit", "lobsters", "web", "devto"],
+    r"(politic|election|government|president|congress)": ["polymarket", "metaculus", "news", "reddit"],
+    r"(crypto|bitcoin|ethereum|blockchain|defi)": ["polymarket", "manifold", "reddit", "hackernews"],
+    r"(review|recommend|best|top|compare|vs)": ["reddit", "web", "news", "rss", "stackexchange"],
+    r"(news|announce|release|update|breaking)": ["news", "reddit", "hackernews", "bluesky", "web"],
+    r"(paper|research|study|arxiv|academic|model|training|benchmark)": ["arxiv", "openalex", "sem_scholar", "hackernews", "reddit"],
+    r"(blog|essay|opinion|write|writing)": ["rss", "lobsters", "web", "devto"],
+    r"(rust|systems|infra|database|distributed)": ["lobsters", "hackernews", "reddit", "stackexchange"],
+    r"(question|how to|help|error|bug|fix|debug)": ["stackexchange", "reddit", "hackernews"],
+    r"(social|fediverse|mastodon|bluesky|twitter)": ["bluesky", "lemmy", "reddit", "hackernews"],
+    r"(forecast|prediction|future|trend|will)": ["manifold", "metaculus", "polymarket", "reddit"],
 }
 
 SOURCE_WEIGHTS = {
@@ -37,8 +54,20 @@ SOURCE_WEIGHTS = {
     "hackernews": 0.9,
     "polymarket": 0.85,
     "github": 0.8,
+    "youtube": 0.75,
     "web": 0.7,
     "news": 0.75,
+    "arxiv": 0.88,
+    "lobsters": 0.82,
+    "rss": 0.65,
+    "openalex": 0.87,
+    "sem_scholar": 0.86,
+    "manifold": 0.80,
+    "metaculus": 0.82,
+    "bluesky": 0.65,
+    "stackexchange": 0.78,
+    "lemmy": 0.68,
+    "devto": 0.70,
 }
 
 
@@ -62,6 +91,8 @@ def _detect_intent(topic: str) -> str:
         return "person_research"
     if re.search(r"(company|startup|product|tool|service)", topic_lower):
         return "product_research"
+    if re.search(r"(paper|research|study|arxiv|academic|arxiv|model|training|benchmark)", topic_lower):
+        return "academic"
     return "general"
 
 
@@ -197,6 +228,9 @@ def plan_query(
         source_weights["reddit"] = source_weights.get("reddit", 1.0) * 1.1
     elif intent == "product_research":
         source_weights["hackernews"] = source_weights.get("hackernews", 0.9) * 1.2
+    elif intent == "academic":
+        source_weights["arxiv"] = source_weights.get("arxiv", 0.88) * 1.4
+        source_weights["hackernews"] = source_weights.get("hackernews", 0.9) * 1.1
 
     freshness_mode = "strict" if intent == "news_tracking" else "relaxed"
 

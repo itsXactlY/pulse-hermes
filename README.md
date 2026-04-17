@@ -1,14 +1,48 @@
-# PULSE v0.0.2 — The Pulse of the Internet
+# PULSE v0.0.3 — The Pulse of the Internet
+[![Demo](assets/logo.png)](https://www.youtube.com/watch?v=N6DfxTyub38)
+> **⚠️ EVOLUTION BUILD — FORGED FROM v0.0.2, NOW 10 SOURCES**
 
-> **⚠️ PROOF OF CONCEPT — BORN FROM CLONE, NOW A CROWD PROJECT**
+PULSE is a multi-source social search engine scored by real engagement — not SEO, not editors, not algorithms designed to sell ads. It searches Reddit, Hacker News, Polymarket, YouTube, GitHub, ArXiv, Lobsters, RSS/Blogs, the web, and news. Ranks by what real people actually engage with.
+
+v0.0.3 is not an incremental update. It's a refinement pass informed by 1,121 neural memories and 119,000+ connections. Every module was touched. Three new sources. Three-pass dedup. Engagement velocity. Self-learning source selection. Neural memory integration.
+
+The human built the floor.
+The agent refined the palace.
+
+## What Changed in v0.0.3
+
+### New Sources (3)
+| Source | Signal | Auth |
+|--------|--------|:----:|
+| **ArXiv** | Academic papers, ML/AI research, peer-reviewed signal | No |
+| **Lobsters** | Curated tech links, systems programming, quality community | No |
+| **RSS/Blogs** | Technical blogs, engineering insights, expert opinions | No |
+
+### Algorithm Upgrades
+- **Three-pass deduplication**: URL exact → Content hash → Cosine similarity (was: URL + Jaccard)
+- **Bigram/trigram relevance**: 60% unigram + 30% bigram + 10% trigram (was: unigram only)
+- **Engagement velocity**: New 10% signal — how fast engagement grows per day
+- **Cosine similarity clustering**: Replaces Jaccard for semantic grouping
+- **Better cluster titles**: TF-weighted term extraction (was: raw frequency)
+- **Multi-source + size bonus**: Clusters across sources get 12% boost, size adds up to 15%
+- **Self-learning source weights**: Analyzes past performance to boost effective sources
+- **Neural memory integration**: Recalls past research context, saves findings
+
+### Scoring Weights (v0.0.3)
+| Signal | Weight | Change |
+|--------|:------:|:------:|
+| Local Relevance | 30% | ↓ from 35% |
+| Freshness | 20% | ↓ from 25% |
+| Engagement | 25% | — |
+| Engagement Velocity | 10% | **NEW** |
+| Source Quality | 15% | — |
+
+### Bug Fixes
+- `--emit md` now renders proper Markdown (was: fell through to `full`)
+- Store dedup now checks URL hash in addition to title hash
+- `cosine_similarity()` added to relevance module
+- YouTube source quality now in scoring table (was: missing)
 >
-> PULSE started as an independent reimplementation of [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill) — built from scratch for the Hermes Agent ecosystem. It is *not* a fork. It's a ground-up reconstruction of the architecture and the concepts, rewritten in pure Python stdlib, zero dependencies, designed to be evolved by autonomous agents.
->
-> **This PoC validates the core engine.** The multi-source pipeline, RRF fusion, clustering — that's done. What's left is not iteration. It's evolution. And the agents do that.
->
-> The human built the scaffolding. The agent builds the cathedral.
->
->[![Demo](assets/logo.png)](https://www.youtube.com/watch?v=N6DfxTyub38)
 
 Built by a human. Finished by no one.
 
@@ -97,11 +131,14 @@ A dozen disconnected platforms, bridged by an agent.
 | **Hacker News** | The developer consensus. Points and comments. Where technical people actually argue. | No |
 | **Polymarket** | Not opinions. Odds. Backed by real money and insider information. | No |
 | **YouTube** | The 45-minute deep dive. Full transcripts searched for the 5 quotable sentences that matter. | No |
+| **ArXiv** | Academic papers. ML/AI research. Peer-reviewed signal. | No |
+| **Lobsters** | Curated tech links. Systems programming. Quality community with moderation. | No |
+| **RSS/Blogs** | Technical blogs. Engineering insights. Expert opinions from practitioners. | No |
 | **GitHub** | PR velocity, top repos by stars, issues, release notes. | Token |
 | **Web** | The editorial coverage, the blog comparisons. One signal of many, not the only one. | Key |
 | **News** | NewsAPI articles from major publications. | Key |
 
-Four sources work out of the box. Zero configuration. The rest unlocks with one key or one command.
+Seven sources work out of the box. Zero configuration. The rest unlocks with one key or one command.
 
 ## Quick Start
 
@@ -191,48 +228,57 @@ Social relevancy, not SEO relevancy.
 ## Architecture
 
 ```
-pulse/
-├── scripts/
-│   ├── pulse.py            # CLI entry point
-│   ├── auto_commit.sh      # Auto commit + test + PR
-│   ├── hermes_bootstrap.sh # Hermes agent auto-discovery
-│   └── lib/
-│       ├── schema.py        # Data models
-│       ├── pipeline.py      # Orchestrator
-│       ├── planner.py       # Heuristic planner
-│       ├── llm_planner.py   # LLM planner (Ollama/OpenRouter/OpenAI)
-│       ├── normalize.py     # Source normalizers
-│       ├── score.py         # Multi-signal scoring
-│       ├── dedupe.py        # Near-duplicate detection
-│       ├── fusion.py        # Weighted RRF
-│       ├── cluster.py       # Content clustering
-│       ├── render.py        # Output rendering
-│       ├── cache.py         # SQLite cache (24h TTL)
-│       ├── store.py         # Persistent research store
-│       ├── ui.py            # Live progress display
-│       ├── setup.py         # First-run setup wizard
-│       ├── config.py        # Environment management
-│       ├── dates.py         # Date utilities
-│       ├── http.py          # HTTP client with retry
-│       ├── relevance.py     # Token overlap scoring
-│       ├── log.py           # Logging
-│       ├── reddit.py        # Reddit (free)
-│       ├── hackernews.py    # HN (free)
-│       ├── polymarket.py    # Polymarket (free)
-│       ├── youtube.py       # YouTube via yt-dlp (free)
-│       ├── github.py        # GitHub
-│       ├── web_search.py    # Brave/Serper/Exa
-│       └── news.py          # NewsAPI
-├── tests/
-│   └── test_basic.py
-├── .github/
-│   ├── workflows/ci.yml
-│   └── pull_request_template.md
-├── CONTRIBUTING.md
-├── install.sh
-├── SKILL.md
-├── README.md
-└── LICENSE
+```
+scripts/
+  pulse.py            # CLI entry point
+  auto_commit.sh      # Auto commit + test + PR (for agents)
+  hermes_bootstrap.sh # Auto-discovery for new Hermes agents
+  lib/
+    schema.py          # Data models
+    pipeline.py        # Orchestrator
+    planner.py         # Heuristic planner
+    llm_planner.py     # LLM planner (Ollama/OpenRouter/OpenAI)
+    normalize.py       # Source normalizers
+    score.py           # Multi-signal scoring + engagement velocity
+    dedupe.py          # Three-pass dedup (URL, content hash, cosine)
+    fusion.py          # Weighted RRF
+    cluster.py         # Cosine similarity clustering
+    render.py          # Output rendering (compact/full/json/context/md)
+    cache.py           # SQLite cache (24h TTL)
+    store.py           # Persistent research store
+    ui.py              # Live progress display
+    setup.py           # First-run setup wizard
+    config.py          # Environment management
+    dates.py           # Date utilities
+    http.py            # HTTP client with retry
+    relevance.py       # Token overlap + bigram/trigram + cosine similarity
+    log.py             # Logging
+    filter.py          # Content filtering
+    raw_filter.py      # Raw data filtering
+    neural_memory.py   # Neural memory integration (NEW)
+    self_learn.py      # Self-learning source selection (NEW)
+    reddit.py          # Reddit (free)
+    hackernews.py      # HN (free)
+    polymarket.py      # Polymarket (free)
+    youtube.py         # YouTube via yt-dlp (free)
+    github.py          # GitHub
+    web_search.py      # Brave/Serper/Exa
+    news.py            # NewsAPI
+    arxiv.py           # ArXiv papers (free, NEW)
+    lobsters.py        # Lobsters tech links (free, NEW)
+    rss.py             # RSS/Atom feeds (free, NEW)
+    filter.py          # Content filtering
+    raw_filter.py      # Raw data filtering
+tests/
+  test_basic.py
+.github/
+  workflows/ci.yml
+  pull_request_template.md
+CONTRIBUTING.md
+install.sh
+SKILL.md
+README.md
+LICENSE
 ```
 
 ### Pipeline Flow
@@ -303,29 +349,37 @@ Topic Input
 
 ## Comparison with the Original
 
-| Feature | mvanhorn/last30days-skill | PULSE v0.0.2 |
-|---------|:-------------------------:|:------------:|
-| Sources | 14+ | 7 |
-| Reddit | ✓ (public + ScrapeCreators) | ✓ (public) |
-| Hacker News | ✓ | ✓ |
-| Polymarket | ✓ | ✓ |
-| YouTube | ✓ (yt-dlp) | ✓ (yt-dlp) |
-| GitHub | ✓ | ✓ |
-| Web Search | ✓ (Brave/Exa/Serper) | ✓ (Brave/Exa/Serper) |
-| X/Twitter | ✓ | ✗ |
-| TikTok/Instagram | ✓ | ✗ |
-| LLM Planner | ✓ | ✓ (Ollama/OpenRouter/OpenAI) |
-| RRF Fusion | ✓ | ✓ |
-| Clustering | ✓ | ✓ |
-| Caching | ✓ (24h TTL) | ✓ (SQLite, 24h TTL) |
-| SQLite Store | ✓ | ✓ (persistent history) |
-| Setup Wizard | ✓ | ✓ |
-| YouTube Transcripts | ✓ | ✓ |
-| Progress UI | ✓ | ✓ |
-| Zero-config sources | 3 | 4 |
-| Python stdlib only | ✓ | ✓ |
-| Lines of code | ~15,000+ | ~6,300 |
-| Crowd-contributable | ✗ | ✓ |
+|| Feature | mvanhorn/last30days-skill | PULSE v0.0.3 |
+||---------|:-------------------------:|:------------:|
+|| Sources | 14+ | 10 |
+|| Reddit | ✓ (public + ScrapeCreators) | ✓ (public) |
+|| Hacker News | ✓ | ✓ |
+|| Polymarket | ✓ | ✓ |
+|| YouTube | ✓ (yt-dlp) | ✓ (yt-dlp) |
+|| GitHub | ✓ | ✓ |
+|| Web Search | ✓ (Brave/Exa/Serper) | ✓ (Brave/Exa/Serper) |
+|| ArXiv | ✗ | ✓ (free) |
+|| Lobsters | ✗ | ✓ (free) |
+|| RSS/Blogs | ✗ | ✓ (free, configurable) |
+|| X/Twitter | ✓ | ✗ |
+|| TikTok/Instagram | ✓ | ✗ |
+|| LLM Planner | ✓ | ✓ (Ollama/OpenRouter/OpenAI) |
+|| RRF Fusion | ✓ | ✓ |
+|| Clustering | ✓ | ✓ (cosine similarity) |
+|| Caching | ✓ (24h TTL) | ✓ (SQLite, 24h TTL) |
+|| SQLite Store | ✓ | ✓ (URL+title dedup) |
+|| Setup Wizard | ✓ | ✓ |
+|| YouTube Transcripts | ✓ | ✓ |
+|| Progress UI | ✓ | ✓ |
+|| Self-Learning | ✗ | ✓ (source performance) |
+|| Neural Memory | ✗ | ✓ (recall + save) |
+|| Engagement Velocity | ✗ | ✓ |
+|| Three-Pass Dedup | ✗ | ✓ |
+|| Markdown Output | ✗ | ✓ |
+|| Zero-config sources | 3 | 7 |
+|| Python stdlib only | ✓ | ✓ |
+|| Lines of code | ~15,000+ | ~7,800 |
+|| Crowd-contributable | ✗ | ✓ |
 
 ## What's Missing — And Why
 

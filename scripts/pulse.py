@@ -80,6 +80,8 @@ def save_output(report, emit: str, save_dir: str) -> Path:
         content = render.render_json(report)
     elif emit == "full":
         content = render.render_full(report)
+    elif emit == "md":
+        content = render.render_markdown(report)
     elif emit == "context":
         content = render.render_context(report)
     else:
@@ -233,8 +235,10 @@ def main() -> int:
     # Render output
     if args.emit == "json":
         output = render.render_json(report)
-    elif args.emit in ("full", "md"):
+    elif args.emit == "full":
         output = render.render_full(report)
+    elif args.emit == "md":
+        output = render.render_markdown(report)
     elif args.emit == "context":
         output = render.render_context(report)
     else:

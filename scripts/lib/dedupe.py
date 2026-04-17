@@ -1,9 +1,18 @@
 """Near-duplicate detection for last30days items."""
+"""Near-duplicate detection for last30days items.
 
+Three-pass deduplication:
+1. URL exact match (always dedup)
+2. Content hash (title + body fingerprint)
+3. Cosine similarity on titles (catches reworded duplicates)
+"""
+
+import hashlib
 import re
 from typing import List, Set
 
 from . import log
+from .relevance import cosine_similarity
 from .schema import SourceItem
 
 
@@ -20,37 +29,27 @@ def _normalize_text(text: str) -> str:
     return text.strip()
 
 
+def _content_hash(item: SourceItem) -> str:
+    """Generate a content fingerprint from title + first 200 chars of body."""
+    text = f"{_normalize_text(item.title)}:{_normalize_text(item.body[:200])}"
+    return hashlib.md5(text.encode()).hexdigest()
+
+
 def _title_similarity(title1: str, title2: str) -> float:
-    """Compute token-based similarity between two titles."""
-    t1 = set(_normalize_text(title1).split())
-    t2 = set(_normalize_text(title2).split())
-
-    if not t1 or not t2:
-        return 0.0
-
-    # Remove stop words
-    stops = {"the", "a", "an", "is", "are", "was", "in", "on", "at", "to", "for", "of", "and", "or", "but"}
-    t1 -= stops
-    t2 -= stops
-
-    if not t1 or not t2:
-        return 0.0
-
-    intersection = t1 & t2
-    union = t1 | t2
-
-    return len(intersection) / len(union) if union else 0.0
+    """Compute cosine similarity between two titles."""
+    return cosine_similarity(title1, title2)
 
 
-def deduplicate(items: List[SourceItem], threshold: float = 0.7) -> List[SourceItem]:
-    """Remove near-duplicate items.
+def deduplicate(items: List[SourceItem], threshold: float = 0.65) -> List[SourceItem]:
+    """Remove near-duplicate items using three-pass dedup.
 
-    Items with the same URL are always deduped.
-    Items with title similarity above threshold are deduped (keeps the higher-scoring one).
+    Pass 1: Exact URL match (always dedup)
+    Pass 2: Content hash (title+body fingerprint)
+    Pass 3: Cosine similarity on titles (catches reworded duplicates)
 
     Args:
         items: List of SourceItems (should already be scored)
-        threshold: Similarity threshold for dedup (0.0 - 1.0)
+        threshold: Cosine similarity threshold for dedup (0.0 - 1.0)
 
     Returns:
         Deduplicated list
@@ -58,7 +57,7 @@ def deduplicate(items: List[SourceItem], threshold: float = 0.7) -> List[SourceI
     if not items:
         return items
 
-    # First pass: exact URL dedup
+    # Pass 1: exact URL dedup
     seen_urls: Set[str] = set()
     url_deduped: List[SourceItem] = []
 
@@ -70,13 +69,24 @@ def deduplicate(items: List[SourceItem], threshold: float = 0.7) -> List[SourceI
             seen_urls.add(url)
         url_deduped.append(item)
 
-    # Second pass: title similarity dedup
-    if len(url_deduped) <= 1:
-        return url_deduped
+    # Pass 2: content hash dedup
+    seen_hashes: Set[str] = set()
+    hash_deduped: List[SourceItem] = []
+
+    for item in url_deduped:
+        ch = _content_hash(item)
+        if ch in seen_hashes:
+            continue
+        seen_hashes.add(ch)
+        hash_deduped.append(item)
+
+    # Pass 3: cosine similarity dedup
+    if len(hash_deduped) <= 1:
+        return hash_deduped
 
     # Sort by local_rank_score descending so we keep the best
     sorted_items = sorted(
-        url_deduped,
+        hash_deduped,
         key=lambda x: x.local_rank_score or 0,
         reverse=True,
     )
@@ -92,8 +102,11 @@ def deduplicate(items: List[SourceItem], threshold: float = 0.7) -> List[SourceI
         if not is_dup:
             kept.append(item)
 
-    deduped_count = len(url_deduped) - len(kept)
-    if deduped_count > 0:
-        _source_log(f"Deduped {deduped_count} items ({len(url_deduped)} -> {len(kept)})")
+    total_deduped = len(items) - len(kept)
+    if total_deduped > 0:
+        _source_log(f"Deduped {total_deduped} items ({len(items)} -> {len(kept)}): "
+                    f"{len(items) - len(url_deduped)} URL, "
+                    f"{len(url_deduped) - len(hash_deduped)} content, "
+                    f"{len(hash_deduped) - len(kept)} similar")
 
     return kept

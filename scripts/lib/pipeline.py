@@ -10,23 +10,36 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from . import (
+    arxiv as _arxiv,
+    bluesky as _bluesky,
     cache as _cache,
     cluster as _cluster,
     config as _config,
     dates as _dates,
     dedupe as _dedupe,
+    devto as _devto,
     filter as _filter,
     fusion as _fusion,
     github as _github,
     hackernews as _hackernews,
+    lemmy as _lemmy,
+    lobsters as _lobsters,
     log,
+    manifold as _manifold,
+    metaculus as _metaculus,
+    neural_memory as _neural_mem,
     news as _news,
     normalize as _normalize,
+    openalex as _openalex,
     planner as _heuristic_planner,
     llm_planner as _llm_planner,
     polymarket as _polymarket,
     reddit as _reddit,
+    rss as _rss,
     score as _score,
+    self_learn as _self_learn,
+    sem_scholar as _sem_scholar,
+    stackexchange as _stackexchange,
     store as _store,
     ui as _ui,
     web_search as _web,
@@ -90,6 +103,28 @@ def _retrieve_stream(
                 items = []
         elif source == "youtube":
             items = _youtube.search(search_query, depth=depth)
+        elif source == "arxiv":
+            items = _arxiv.search(search_query, from_date, to_date, depth=depth)
+        elif source == "lobsters":
+            items = _lobsters.search(search_query, from_date, to_date, depth=depth)
+        elif source == "rss":
+            items = _rss.search(search_query, from_date, to_date, depth=depth)
+        elif source == "openalex":
+            items = _openalex.search(search_query, from_date, to_date, depth=depth)
+        elif source == "sem_scholar":
+            items = _sem_scholar.search(search_query, from_date, to_date, depth=depth)
+        elif source == "manifold":
+            items = _manifold.search(search_query, from_date, to_date, depth=depth)
+        elif source == "metaculus":
+            items = _metaculus.search(search_query, from_date, to_date, depth=depth)
+        elif source == "bluesky":
+            items = _bluesky.search(search_query, from_date, to_date, depth=depth)
+        elif source == "stackexchange":
+            items = _stackexchange.search(search_query, from_date, to_date, depth=depth)
+        elif source == "lemmy":
+            items = _lemmy.search(search_query, from_date, to_date, depth=depth)
+        elif source == "devto":
+            items = _devto.search(search_query, from_date, to_date, depth=depth)
         else:
             _source_log(f"Unknown source: {source}")
             items = []
@@ -170,6 +205,16 @@ def run(
     ui = _ui.ProgressDisplay(topic, show=progress)
     ui.start()
 
+    # Neural memory: recall past context
+    neural_context = _neural_mem.recall_context(topic, limit=3)
+    if neural_context:
+        _source_log(f"Neural memory: found {len(neural_context)} past memories")
+
+    # Self-learning: boost sources that performed well in past searches
+    past_performance = _self_learn.get_source_performance(topic)
+    if past_performance:
+        _source_log(f"Self-learning: found past performance data for {len(past_performance)} sources")
+
     # Generate query plan (LLM or heuristic)
     if use_llm:
         plan = _llm_planner.plan_query(
@@ -185,6 +230,12 @@ def run(
             available_sources=available,
             depth=depth,
             requested_sources=requested_sources,
+        )
+
+    # Apply self-learning boost to source weights
+    if past_performance:
+        plan.source_weights = _self_learn.boost_weights(
+            plan.source_weights, past_performance
         )
 
     # Retrieval bundle
@@ -282,6 +333,19 @@ def run(
             new_findings = counts.get("new", 0)
         except Exception as e:
             _source_log(f"Store save failed: {e}")
+
+    # Save to neural memory (top findings only)
+    try:
+        all_items = []
+        for items in bundle.items_by_source.values():
+            all_items.extend(items)
+        neural_items = [
+            {"title": item.title, "source": item.source, "url": item.url}
+            for item in all_items[:15]
+        ]
+        _neural_mem.save_findings(topic, neural_items, limit=10)
+    except Exception as e:
+        _source_log(f"Neural memory save failed: {e}")
 
     _source_log(f"Pipeline complete: {total_items} items, {len(clusters)} clusters, {len(candidates)} candidates")
 

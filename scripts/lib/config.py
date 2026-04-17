@@ -111,6 +111,39 @@ def available_sources(config: Dict[str, Any]) -> List[str]:
         except ImportError:
             pass
 
+    # ArXiv - always available (public API, no auth)
+    available.append("arxiv")
+
+    # Lobsters - always available (public JSON, no auth)
+    available.append("lobsters")
+
+    # RSS - always available if feeds configured or defaults exist
+    available.append("rss")
+
+    # OpenAlex - always available (public API, no auth)
+    available.append("openalex")
+
+    # Semantic Scholar - always available (public API, no auth)
+    available.append("sem_scholar")
+
+    # Manifold Markets - always available (public API, no auth)
+    available.append("manifold")
+
+    # Metaculus - always available (public API, no auth)
+    available.append("metaculus")
+
+    # Bluesky - always available (public AT Protocol, no auth)
+    available.append("bluesky")
+
+    # Stack Exchange - always available (public API, no auth for basic)
+    available.append("stackexchange")
+
+    # Lemmy - always available (federated, public API)
+    available.append("lemmy")
+
+    # Dev.to - always available (public API, no auth)
+    available.append("devto")
+
     # Web search - needs Brave, Exa, or Serper key
     if config.get("BRAVE_API_KEY") or config.get("EXA_API_KEY") or config.get("SERPER_API_KEY"):
         available.append("web")
