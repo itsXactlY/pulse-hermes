@@ -27,6 +27,14 @@ Available sources and what they're best for:
 - arxiv: Academic papers, ML/AI research, scientific publications
 - lobsters: Curated tech links, systems programming, quality-focused community
 - rss: Technical blogs, engineering blogs, expert opinions
+- openalex: Open academic works, citations, scholarly metadata, research graphs
+- sem_scholar: AI/NLP papers, TLDR summaries, citation networks
+- manifold: Play-money prediction markets, AI/tech forecasting
+- metaculus: Expert forecasting tournaments, geopolitical predictions, superforecasters
+- bluesky: Decentralized social, tech community opinions, trending discussions
+- stackexchange: StackOverflow and 170+ Q&A sites, programming/sysadmin/devops answers
+- lemmy: Federated community discussions, tech and niche topic forums
+- devto: Developer blog posts, tutorials, webdev guides, career advice
 
 Output ONLY valid JSON, no markdown fences:
 {

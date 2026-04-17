@@ -53,7 +53,7 @@ def search(
         url = f"{STACKEXCHANGE_URL}?{urllib.parse.urlencode(params)}"
 
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "pulse-hermes/3.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "hermes-pulse/3.0"})
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except Exception as e:
@@ -74,7 +74,7 @@ def search(
             body = f"Tags: {', '.join(tags[:5])} | {answer_count} answers | {view_count:,} views"
 
             relevance = token_overlap_relevance(topic, title) * 0.6
-            relevance += min(0.3, math.log1p(score) / 10)
+            relevance += min(0.3, math.log1p(max(0, score)) / 10)
             relevance += 0.1 if is_answered else 0
 
             items.append({

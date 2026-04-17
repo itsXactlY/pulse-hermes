@@ -223,14 +223,20 @@ def plan_query(
     # Adjust for detected intent
     if intent == "prediction":
         source_weights["polymarket"] = source_weights.get("polymarket", 0.85) * 1.3
+        source_weights["manifold"] = source_weights.get("manifold", 0.80) * 1.2
+        source_weights["metaculus"] = source_weights.get("metaculus", 0.82) * 1.2
     elif intent == "person_research":
         source_weights["github"] = source_weights.get("github", 0.8) * 1.2
         source_weights["reddit"] = source_weights.get("reddit", 1.0) * 1.1
+        source_weights["bluesky"] = source_weights.get("bluesky", 0.65) * 1.15
     elif intent == "product_research":
         source_weights["hackernews"] = source_weights.get("hackernews", 0.9) * 1.2
+        source_weights["devto"] = source_weights.get("devto", 0.70) * 1.15
     elif intent == "academic":
         source_weights["arxiv"] = source_weights.get("arxiv", 0.88) * 1.4
         source_weights["hackernews"] = source_weights.get("hackernews", 0.9) * 1.1
+        source_weights["openalex"] = source_weights.get("openalex", 0.87) * 1.3
+        source_weights["sem_scholar"] = source_weights.get("sem_scholar", 0.86) * 1.3
 
     freshness_mode = "strict" if intent == "news_tracking" else "relaxed"
 

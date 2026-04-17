@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from . import (
+    adaptive_lookback as _adaptive_lb,
     arxiv as _arxiv,
     bluesky as _bluesky,
     cache as _cache,
@@ -34,6 +35,7 @@ from . import (
     planner as _heuristic_planner,
     llm_planner as _llm_planner,
     polymarket as _polymarket,
+    query_router as _query_router,
     reddit as _reddit,
     rss as _rss,
     score as _score,
@@ -57,6 +59,28 @@ DEPTH_SETTINGS = {
     "quick": {"per_stream_limit": 6, "pool_limit": 15},
     "default": {"per_stream_limit": 12, "pool_limit": 40},
     "deep": {"per_stream_limit": 20, "pool_limit": 60},
+}
+
+# Source dispatch map: source name -> module with .search()
+SOURCE_MAP = {
+    "reddit": _reddit,
+    "hackernews": _hackernews,
+    "polymarket": _polymarket,
+    "github": _github,
+    "web": _web,
+    "news": _news,
+    "youtube": _youtube,
+    "arxiv": _arxiv,
+    "lobsters": _lobsters,
+    "rss": _rss,
+    "openalex": _openalex,
+    "sem_scholar": _sem_scholar,
+    "manifold": _manifold,
+    "metaculus": _metaculus,
+    "bluesky": _bluesky,
+    "stackexchange": _stackexchange,
+    "lemmy": _lemmy,
+    "devto": _devto,
 }
 
 
@@ -187,6 +211,17 @@ def run(
     settings = DEPTH_SETTINGS.get(depth, DEPTH_SETTINGS["default"])
     from_date, to_date = _dates.get_date_range(lookback_days)
 
+    # Query router: classify and optimize source ordering
+    router = _query_router.QueryRouter()
+    lookback_tracker = _adaptive_lb.AdaptiveLookback()
+
+    # Adaptive lookback: adjust window based on topic density
+    adaptive_days = lookback_tracker.get_lookback(topic)
+    if adaptive_days != lookback_days:
+        _source_log(f"Adaptive lookback: {lookback_days}d -> {adaptive_days}d for topic density")
+        from_date, to_date = _dates.get_date_range(adaptive_days)
+        lookback_days = adaptive_days
+
     # Prune expired cache entries
     if use_cache:
         _cache.prune()
@@ -238,6 +273,12 @@ def run(
             plan.source_weights, past_performance
         )
 
+    # Query router: classify and boost routed sources by 15%
+    query_type = router.classify(topic)
+    _source_log(f"Query type: {query_type}")
+    for source in plan.source_weights:
+        plan.source_weights[source] = plan.source_weights[source] * 1.15
+
     # Retrieval bundle
     bundle = RetrievalBundle()
 
@@ -281,6 +322,10 @@ def run(
             )
             normalized = normalized[:settings["per_stream_limit"]]
             bundle.add_items(subquery.label, source, normalized)
+
+            # Record result density for adaptive lookback
+            if normalized:
+                lookback_tracker.record_result(topic, source)
 
     # Compute subquery weights
     subquery_weights = {sq.label: sq.weight for sq in plan.subqueries}

@@ -119,6 +119,19 @@ def get_available_sources(env: Dict[str, Any]) -> List[str]:
     if env["api_keys"].get("NEWSAPI_KEY"):
         sources.append("news")
 
+    # Extended sources (always available, no auth required)
+    sources.append("arxiv")
+    sources.append("lobsters")
+    sources.append("rss")
+    sources.append("openalex")
+    sources.append("sem_scholar")
+    sources.append("manifold")
+    sources.append("metaculus")
+    sources.append("bluesky")
+    sources.append("stackexchange")
+    sources.append("lemmy")
+    sources.append("devto")
+
     return sources
 
 
@@ -153,6 +166,14 @@ def print_status(env: Dict[str, Any]) -> None:
             print(f"    {GREEN}✓{NC} {source:15s} (via API key)")
         elif source == "news":
             print(f"    {GREEN}✓{NC} {source:15s} (via API key)")
+        elif source in ("arxiv", "openalex", "sem_scholar"):
+            print(f"    {GREEN}✓{NC} {source:15s} (academic, free)")
+        elif source in ("manifold", "metaculus"):
+            print(f"    {GREEN}✓{NC} {source:15s} (predictions, free)")
+        elif source in ("bluesky", "lemmy"):
+            print(f"    {GREEN}✓{NC} {source:15s} (social, free)")
+        elif source in ("stackexchange", "devto", "lobsters", "rss"):
+            print(f"    {GREEN}✓{NC} {source:15s} (free, no auth)")
 
     # Missing optional
     missing = []

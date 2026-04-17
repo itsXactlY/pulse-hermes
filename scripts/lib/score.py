@@ -1,14 +1,23 @@
-"""Scoring engine for last30days items.
+"""Scoring engine for PULSE items.
 
 Computes multi-signal scores: relevance, recency, engagement, source quality,
-engagement velocity, and cross-source agreement bonus.
+engagement velocity, retentive value, and cross-source confirmation.
 """
 
+import hashlib
 import math
-from typing import Any, Dict, Optional
+import sqlite3
+import threading
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from . import dates, log
 from .schema import SourceItem
+
+# SQLite for retentive value tracking
+CACHE_DIR = Path.home() / ".cache" / "pulse"
+CACHE_DB = CACHE_DIR / "cache.db"
+_ret_local = threading.local()
 
 
 def _source_log(msg: str):
@@ -36,6 +45,115 @@ SOURCE_QUALITY = {
     "lemmy": 0.62,       # Federated Reddit
     "devto": 0.68,       # Developer blogs
 }
+
+
+def _get_ret_conn() -> sqlite3.Connection:
+    """Get thread-local SQLite connection for source_retention tracking."""
+    if not hasattr(_ret_local, "conn") or _ret_local.conn is None:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        _ret_local.conn = sqlite3.connect(str(CACHE_DB))
+        _ret_local.conn.execute("PRAGMA journal_mode=WAL")
+        _ret_local.conn.execute("PRAGMA synchronous=NORMAL")
+        _ret_local.conn.execute("""
+            CREATE TABLE IF NOT EXISTS source_retention (
+                topic_hash TEXT NOT NULL,
+                source TEXT NOT NULL,
+                avg_score REAL DEFAULT 0.0,
+                count INTEGER DEFAULT 0,
+                updated_at REAL NOT NULL,
+                PRIMARY KEY (topic_hash, source)
+            )
+        """)
+        _ret_local.conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_sr_hash
+            ON source_retention(topic_hash)
+        """)
+        _ret_local.conn.commit()
+    return _ret_local.conn
+
+
+def _topic_hash(topic: str) -> str:
+    """Stable hash for a topic string."""
+    return hashlib.sha256(topic.lower().strip().encode()).hexdigest()[:16]
+
+
+def _update_retention(topic: str, source: str, score: float) -> None:
+    """Update running average score for topic/source pair."""
+    thash = _topic_hash(topic)
+    import time
+    now = time.time()
+    conn = _get_ret_conn()
+    try:
+        conn.execute(
+            """INSERT INTO source_retention (topic_hash, source, avg_score, count, updated_at)
+               VALUES (?, ?, ?, 1, ?)
+               ON CONFLICT(topic_hash, source) DO UPDATE SET
+                 avg_score = (avg_score * count + excluded.avg_score) / (count + 1),
+                 count = count + 1,
+                 updated_at = excluded.updated_at""",
+            (thash, source, score, now),
+        )
+        conn.commit()
+    except sqlite3.Error:
+        pass
+
+
+def compute_retentive_value(item: SourceItem, topic: str) -> float:
+    """Compute retentive value based on historical source performance for topic.
+
+    Sources that consistently produce high-scoring content for a given topic
+    get a boost. Returns 0.0-1.0.
+    """
+    thash = _topic_hash(topic)
+    conn = _get_ret_conn()
+    try:
+        row = conn.execute(
+            """SELECT avg_score, count FROM source_retention
+               WHERE topic_hash = ? AND source = ?""",
+            (thash, item.source),
+        ).fetchone()
+        if row is None:
+            return 0.3  # Baseline for no history
+        avg_score, count = row
+        # Confidence grows with count (log scale), capped at 1.0
+        confidence = min(1.0, math.log1p(count) / 5.0)
+        # Blend: confidence * avg_score + (1 - confidence) * baseline
+        return round(confidence * avg_score + (1 - confidence) * 0.3, 3)
+    except sqlite3.Error:
+        return 0.3
+
+
+def compute_cross_source_confirmation(
+    item: SourceItem, all_items: List[SourceItem], threshold: float = 0.6
+) -> float:
+    """Boost score if similar content appears in 3+ sources.
+
+    Uses title token overlap to detect same-content appearances across sources.
+    Returns 0.0-1.0 (1.0 if confirmed by 5+ sources).
+    """
+    from .relevance import token_overlap_relevance
+
+    item_tokens = set(item.title.lower().split())
+    if len(item_tokens) < 2:
+        return 0.0
+
+    confirming_sources = set()
+    for other in all_items:
+        if other.source == item.source:
+            continue
+        sim = token_overlap_relevance(item.title, other.title)
+        if sim >= threshold:
+            confirming_sources.add(other.source)
+
+    count = len(confirming_sources)
+    if count == 0:
+        return 0.0
+    if count == 1:
+        return 0.3
+    if count == 2:
+        return 0.6
+    # 3+ sources: strong signal
+    return min(1.0, 0.6 + 0.2 * (count - 2))
 
 
 def compute_engagement_score(item: SourceItem) -> float:
@@ -144,16 +262,19 @@ def score_item(
     from_date: str,
     to_date: str,
     max_days: int = 30,
+    all_items: Optional[List[SourceItem]] = None,
 ) -> SourceItem:
     """Compute all scores for an item.
 
     Mutates and returns the item with score fields populated.
     Scoring weights:
-      - Local Relevance: 30% (was 35%) — token overlap with topic
-      - Freshness: 20% (was 25%) — recency within lookback
-      - Engagement: 25% — platform metrics
-      - Engagement Velocity: 10% (NEW) — how fast engagement grows
-      - Source Quality: 15% — baseline trust
+      - Local Relevance: 25% — token overlap with topic
+      - Freshness: 15% — recency within lookback
+      - Engagement: 20% — platform metrics
+      - Engagement Velocity: 10% — how fast engagement grows
+      - Source Quality: 10% — baseline trust
+      - Retentive Value: 10% — historical source performance for topic
+      - Cross-Source Confirmation: 10% — same content in 3+ sources
     """
     # Freshness (0-100)
     item.freshness = dates.recency_score(item.published_at, max_days)
@@ -170,15 +291,29 @@ def score_item(
     # Source quality
     item.source_quality = compute_source_quality(item.source)
 
+    # Retentive value
+    retentive = compute_retentive_value(item, topic)
+
+    # Cross-source confirmation (requires batch context)
+    if all_items is not None:
+        cross_source = compute_cross_source_confirmation(item, all_items)
+    else:
+        cross_source = 0.0
+
     # Combined local rank score
     freshness_norm = item.freshness / 100.0
     item.local_rank_score = (
-        0.30 * item.local_relevance +
-        0.20 * freshness_norm +
-        0.25 * item.engagement_score +
+        0.25 * item.local_relevance +
+        0.15 * freshness_norm +
+        0.20 * item.engagement_score +
         0.10 * velocity +
-        0.15 * item.source_quality
+        0.10 * item.source_quality +
+        0.10 * retentive +
+        0.10 * cross_source
     )
+
+    # Update retention DB with this item's final score
+    _update_retention(topic, item.source, item.local_rank_score)
 
     return item
 
@@ -190,5 +325,11 @@ def score_items(
     to_date: str,
     max_days: int = 30,
 ) -> list[SourceItem]:
-    """Score all items in a list."""
-    return [score_item(item, topic, from_date, to_date, max_days) for item in items]
+    """Score all items in a list.
+
+    Passes all items as batch context for cross-source confirmation.
+    """
+    return [
+        score_item(item, topic, from_date, to_date, max_days, all_items=items)
+        for item in items
+    ]

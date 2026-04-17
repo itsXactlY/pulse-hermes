@@ -65,6 +65,14 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Disable progress display")
     parser.add_argument("--debug", action="store_true",
                         help="Enable debug logging")
+    parser.add_argument("--crew", action="store_true",
+                        help="Use multi-agent research crew (multi-round deep research)")
+    parser.add_argument("--iterative", action="store_true",
+                        help="Use iterative retrieval with perspective gap filling")
+    parser.add_argument("--max-rounds", type=int, default=3,
+                        help="Max research rounds for --crew/--iterative mode (default: 3)")
+    parser.add_argument("--breaking", action="store_true",
+                        help="Breaking-news mode: poll every 5 min, track velocity, alert on spikes >3x baseline")
     return parser
 
 
@@ -171,6 +179,79 @@ def cmd_trending() -> int:
     return 0
 
 
+def cmd_breaking(topic: str, cfg: dict, args) -> int:
+    """Breaking-news monitor: poll every 5 min, track velocity, alert on spikes."""
+    import time as _time
+    from lib.trend_detector import TrendDetector
+    from lib.schema import slugify
+
+    detector = TrendDetector()
+    poll_interval = 300  # 5 minutes
+    sys.stderr.write(
+        f"[BREAKING] Monitoring: {topic}  (poll every {poll_interval}s, Ctrl-C to stop)\n"
+    )
+
+    try:
+        while True:
+            try:
+                report = pipeline.run(
+                    topic=topic,
+                    config=cfg,
+                    depth="quick",
+                    requested_sources=None,
+                    lookback_days=7,
+                    use_llm=False,
+                    use_cache=not args.no_cache,
+                    use_store=not args.no_store,
+                    progress=not args.no_progress,
+                )
+            except Exception as e:
+                sys.stderr.write(f"[BREAKING] Pipeline error: {e}\n")
+                _time.sleep(poll_interval)
+                continue
+
+            # Convert candidates to dicts for trend detector
+            current_results = []
+            for c in report.ranked_candidates:
+                current_results.append({
+                    "title": getattr(c, "title", ""),
+                    "source": getattr(c, "source", ""),
+                    "snippet": getattr(c, "snippet", ""),
+                    "url": getattr(c, "url", ""),
+                })
+
+            signal = detector.detect_trend(topic, current_results)
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+            status = "ALERT" if signal.velocity > 0 and detector.check_velocity_spike(
+                topic, len(current_results)
+            ) else "OK"
+
+            line = (
+                f"[BREAKING {timestamp}] {status} | "
+                f"items={len(current_results)} "
+                f"velocity={signal.velocity:.1f}/d "
+                f"strength={signal.trend_strength:.2f} "
+                f"sources={signal.source_spread} "
+                f"drift={signal.drift_detected}"
+            )
+            if signal.hot_subtopics:
+                line += f" | hot={','.join(signal.hot_subtopics[:5])}"
+            print(line)
+
+            if status == "ALERT":
+                sys.stderr.write(
+                    f"!!! SPIKE DETECTED for '{topic}' — {len(current_results)} items, "
+                    f"velocity {signal.velocity:.1f}/d !!!\n"
+                )
+
+            _time.sleep(poll_interval)
+
+    except KeyboardInterrupt:
+        sys.stderr.write("[BREAKING] Stopped.\n")
+        return 0
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -198,8 +279,15 @@ def main() -> int:
     if args.trending:
         return cmd_trending()
 
-    # Main research command
+    # Breaking-news monitor
     topic = " ".join(args.topic).strip()
+    if args.breaking:
+        if not topic:
+            parser.print_usage(sys.stderr)
+            return 2
+        return cmd_breaking(topic, cfg, args)
+
+    # Main research command
     if not topic:
         parser.print_usage(sys.stderr)
         return 2
@@ -208,6 +296,119 @@ def main() -> int:
     requested = None
     if args.sources:
         requested = [s.strip().lower() for s in args.sources.split(",") if s.strip()]
+
+    # Crew mode: multi-agent deep research
+    if args.crew:
+        from lib.research_crew import ResearchCrew
+        crew = ResearchCrew(cfg)
+        try:
+            result = crew.deep_research(query, max_rounds=args.max_rounds)
+        except Exception as e:
+            sys.stderr.write(f"Crew error: {e}\n")
+            if args.debug:
+                import traceback
+                traceback.print_exc()
+            return 1
+
+        if args.emit == "json":
+            import json as _json
+            report = result["report"]
+            if report:
+                output = render.render_json(report)
+            else:
+                output = _json.dumps(result["assessment"], indent=2)
+        elif args.emit == "md":
+            output = result["synthesis"]
+        else:
+            # Compact: show synthesis text
+            output = result["synthesis"]
+
+        print(output)
+
+        if args.save_dir and result["report"]:
+            out_path = save_output(result["report"], "md" if args.emit in ("compact", "md") else args.emit, args.save_dir)
+            sys.stderr.write(f"Saved to: {out_path}\n")
+            # Also save synthesis
+            synth_path = out_path.parent / f"{slugify(query)}-synthesis.md"
+            synth_path.write_text(result["synthesis"])
+            sys.stderr.write(f"Synthesis saved to: {synth_path}\n")
+
+        return 0
+
+    # Iterative retrieval: multi-round with perspective gap filling
+    if args.iterative:
+        from lib.iterative_retrieval import IterativeRetriever
+        retriever = IterativeRetriever(pipeline, cfg)
+        try:
+            deep_result = retriever.retrieve_deep(
+                query=topic,
+                max_rounds=args.max_rounds,
+                depth=args.depth,
+                lookback_days=args.lookback,
+                requested_sources=requested,
+            )
+        except Exception as e:
+            sys.stderr.write(f"Iterative retrieval error: {e}\n")
+            if args.debug:
+                import traceback
+                traceback.print_exc()
+            return 1
+
+        # Build a report-like output from the merged results
+        all_items = deep_result["results"]
+        rounds_info = deep_result["rounds_info"]
+        coverage = deep_result["coverage_score"]
+
+        if args.emit == "json":
+            import json as _json
+            output = _json.dumps({
+                "topic": topic,
+                "coverage_score": coverage,
+                "rounds": len(rounds_info),
+                "rounds_info": rounds_info,
+                "total_items": len(all_items),
+                "items": [
+                    {
+                        "title": it.title,
+                        "url": it.url,
+                        "source": it.source,
+                        "snippet": it.snippet,
+                        "local_rank_score": it.local_rank_score,
+                    }
+                    for it in all_items[:60]
+                ],
+            }, indent=2)
+        else:
+            lines = [f"Iterative Research: {topic}"]
+            lines.append(f"  Rounds: {len(rounds_info)} | Coverage: {coverage}% | Items: {len(all_items)}")
+            lines.append("")
+            for ri in rounds_info:
+                lines.append(
+                    f"  Round {ri['round']}: \"{ri['query']}\" -> "
+                    f"{ri['new_items']} new items, coverage={ri['coverage_score']}%"
+                )
+                if ri.get("gaps_targeted"):
+                    lines.append(f"    Gaps targeted: {', '.join(ri['gaps_targeted'])}")
+            lines.append("")
+            lines.append("Top Results:")
+            for it in all_items[:20]:
+                lines.append(f"  [{it.source}] {it.title[:80]}")
+                if it.url:
+                    lines.append(f"    {it.url}")
+            output = "\n".join(lines)
+
+        print(output)
+
+        if args.save_dir:
+            from pathlib import Path as _Path
+            path = _Path(args.save_dir).expanduser().resolve()
+            path.mkdir(parents=True, exist_ok=True)
+            slug = slugify(topic)
+            out_path = path / f"{slug}-iterative.md"
+            out_path.write_text(output)
+            sys.stderr.write(f"Saved to: {out_path}\n")
+
+        return 0
 
     # Run pipeline
     try:
