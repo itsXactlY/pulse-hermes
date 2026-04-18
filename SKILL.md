@@ -32,7 +32,7 @@ Research ANY topic across 15 sources. Scores by real engagement — not SEO, not
 
 ## CRITICAL: Project Path
 
-**The project is at `~/projects/pulse` (remote: `pulse-hermes.git`).**
+**The project is at the clone directory (remote: `pulse-hermes.git`). Use `$(pwd)` or the agent's working directory — never hardcode paths.**
 
 ⚠️ **SYMLINK WARNING:** If a `lib` symlink exists at project root pointing to `scripts/lib`, REMOVE IT before spawning parallel agents. Agents using `write_file` on `lib/foo.py` will silently overwrite `scripts/lib/foo.py` through the symlink, and `git checkout` will destroy the work. Learned the hard way — 9 agents, 2 rounds, symlink ate everything.
 
@@ -192,6 +192,51 @@ bash scripts/auto_commit.sh "feat: add Bluesky source via AT Protocol"
 ```
 
 Tests run -> commit -> push -> PR. All automated. See CONTRIBUTING.md for details.
+
+## Limitations & Fallback Strategies
+
+PULSE works best for English/tech topics. For German niche products, specialized research, or when PULSE returns few results:
+
+### When PULSE Fails
+1. **German pet products** — PULSE rarely finds relevant results. Direct scraping needed.
+2. **Niche consumer products** — Limited Reddit/HN coverage. Try manufacturer sites + retailers.
+3. **Non-English content** — Search engines may not index well.
+
+### Fallback Approaches
+
+**German Pet Products:**
+- **Zooplus.de** — Good product details, composition, prices (Shopify-based, scrapable)
+- **Amazon.de** — May not carry all products; search with exact product name
+- **AniForte.de** — Shopify store, but direct product URLs may fail (try `/search?q=product`)
+- **German forums** — hundeforum.de, hunde.de (SSL issues common, may need browser)
+
+**Scientific Validation:**
+- **PubMed** — Search for herb/ingredient effectiveness studies
+- **NCBI PMC** — Full-text articles on antiparasitic properties
+- **Google Scholar** — Academic papers on specific ingredients
+
+**Product Analysis:**
+1. Extract composition/ingredients from retailer sites
+2. Search PubMed for each ingredient's effectiveness
+3. Check for clinical studies on the specific product
+4. Compare price per kg to alternatives
+5. Look for veterinary opinions (tierarzt.de, vetline.de)
+
+### Example Workflow (German Product Research)
+```python
+# 1. Try PULSE first
+pulse "AniForte WermiX Hund" --depth deep
+
+# 2. If insufficient, scrape retailer sites
+# Zooplus often has German pet products
+curl -s "https://www.zooplus.de/search?q=product+name"
+
+# 3. Extract ingredients from product page
+# Look for: Zusammensetzung, Inhaltsstoffe, Zutaten
+
+# 4. Validate ingredients scientifically
+# PubMed: "ingredient name antiparasitic dogs"
+```
 
 ## See Also
 
