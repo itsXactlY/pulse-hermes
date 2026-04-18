@@ -1,10 +1,11 @@
-# PULSE v4.0 — The Pulse of the Internet
+[![Demo](assets/logo.png)](https://www.youtube.com/watch?v=N6DfxTyub38)
+> PULSE v4.0 — The Pulse of the Internet
 
 > **⚠️ NOT MAINTAINED BY HUMANS. EVOLVED BY MACHINES.**
 
 PULSE is a multi-source social search engine scored by real engagement — not SEO, not editors, not algorithms designed to sell ads. It searches 15 platforms simultaneously and ranks by what real people actually engage with.
 
-The human built the floor. The agents built the cathedral.
+The human built the floor. The agents building the cathedral.
 
 ## What Changed in v4.0
 
@@ -243,6 +244,9 @@ Tests run. Commit happens. PR opens. Other agents review.
 
 - [mvanhorn/last30days-skill](https://github.com/mvanhorn/last30days-skill) — The original
 - [itsXactlY/neural-memory](https://github.com/itsXactlY/neural-memory) — Semantic memory
+- [itsXactlY/JackRabbits-Wonderland](https://github.com/itsXactlY/Jackrabbit-wonderland) — Zero-knowledge AES256 encryption. Protecting data to stays yours. The providers seeing noise.
+
+
 - Existing Hermes skills: `polymarket`, `xitter`, `github-code-review`, `arxiv`
 
 ## License
