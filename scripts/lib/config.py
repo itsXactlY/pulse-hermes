@@ -47,6 +47,8 @@ def get_config() -> dict[str, Any]:
         "OPENAI_API_KEY",
         "OPENROUTER_API_KEY",
         "NEWSAPI_KEY",
+        "BING_API_KEY",
+        "SERPAPI_KEY",
     ]
 
     config = {}
@@ -143,6 +145,17 @@ def available_sources(config: Dict[str, Any]) -> List[str]:
 
     # Dev.to - always available (public API, no auth)
     available.append("devto")
+
+    # TickerTick - always available (free crypto news aggregator)
+    available.append("tickertick")
+
+    # Bing News - needs BING_API_KEY or falls back to web_search
+    if config.get("BING_API_KEY") or config.get("BRAVE_API_KEY") or config.get("SERPER_API_KEY") or config.get("EXA_API_KEY"):
+        available.append("bing_news")
+
+    # SerpAPI News - needs SERPAPI_KEY
+    if config.get("SERPAPI_KEY"):
+        available.append("serpapi_news")
 
     # Web search - needs Brave, Exa, or Serper key
     if config.get("BRAVE_API_KEY") or config.get("EXA_API_KEY") or config.get("SERPER_API_KEY"):

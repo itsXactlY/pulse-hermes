@@ -30,6 +30,9 @@ SOURCE_CAPABILITIES = {
     "stackexchange": {"types": ["q&a", "programming", "devops", "sysadmin", "technical"]},
     "lemmy": {"types": ["discussions", "opinions", "tech", "communities", "federation"]},
     "devto": {"types": ["blogs", "tutorials", "programming", "webdev", "career"]},
+    "tickertick": {"types": ["crypto", "blockchain", "defi", "finance", "markets", "web3"]},
+    "bing_news": {"types": ["news", "events", "coverage", "breaking", "world"]},
+    "serpapi_news": {"types": ["news", "google-news", "events", "coverage", "trending"]},
 }
 
 # Topic patterns that map to preferred sources
@@ -38,9 +41,9 @@ TOPIC_PATTERNS = {
     r"(code|repo|github|programming|developer|open.?source)": ["github", "hackernews", "lobsters", "stackexchange", "reddit", "devto"],
     r"(startup|launch|product|show HN)": ["hackernews", "reddit", "lobsters", "web", "devto"],
     r"(politic|election|government|president|congress)": ["polymarket", "metaculus", "news", "reddit"],
-    r"(crypto|bitcoin|ethereum|blockchain|defi)": ["polymarket", "manifold", "reddit", "hackernews"],
+    r"(crypto|bitcoin|ethereum|blockchain|defi)": ["polymarket", "manifold", "reddit", "hackernews", "tickertick"],
     r"(review|recommend|best|top|compare|vs)": ["reddit", "web", "news", "rss", "stackexchange"],
-    r"(news|announce|release|update|breaking)": ["news", "reddit", "hackernews", "bluesky", "web"],
+    r"(news|announce|release|update|breaking)": ["news", "reddit", "hackernews", "bluesky", "web", "bing_news", "serpapi_news"],
     r"(paper|research|study|arxiv|academic|model|training|benchmark)": ["arxiv", "openalex", "sem_scholar", "hackernews", "reddit"],
     r"(blog|essay|opinion|write|writing)": ["rss", "lobsters", "web", "devto"],
     r"(rust|systems|infra|database|distributed)": ["lobsters", "hackernews", "reddit", "stackexchange"],
@@ -68,6 +71,9 @@ SOURCE_WEIGHTS = {
     "stackexchange": 0.78,
     "lemmy": 0.68,
     "devto": 0.70,
+    "tickertick": 0.65,
+    "bing_news": 0.72,
+    "serpapi_news": 0.74,
 }
 
 

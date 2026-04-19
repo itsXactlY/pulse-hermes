@@ -91,6 +91,8 @@ def detect_environment() -> Dict[str, Any]:
         "NEWSAPI_KEY": "NewsAPI",
         "OPENROUTER_API_KEY": "OpenRouter (LLM planner)",
         "OPENAI_API_KEY": "OpenAI (LLM planner)",
+        "BING_API_KEY": "Bing News",
+        "SERPAPI_KEY": "SerpAPI (Google News)",
     }
 
     for key, label in key_checks.items():
@@ -131,6 +133,17 @@ def get_available_sources(env: Dict[str, Any]) -> List[str]:
     sources.append("stackexchange")
     sources.append("lemmy")
     sources.append("devto")
+    sources.append("tickertick")
+
+    # Sources requiring API keys
+    if env["api_keys"].get("BING_API_KEY") or \
+       env["api_keys"].get("BRAVE_API_KEY") or \
+       env["api_keys"].get("SERPER_API_KEY") or \
+       env["api_keys"].get("EXA_API_KEY"):
+        sources.append("bing_news")
+
+    if env["api_keys"].get("SERPAPI_KEY"):
+        sources.append("serpapi_news")
 
     return sources
 

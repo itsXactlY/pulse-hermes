@@ -488,6 +488,88 @@ def normalize_devto(items: List[Dict[str, Any]], from_date: str, to_date: str) -
 
 
 # Map source names to normalizer functions
+
+def normalize_tickertick(items: List[Dict[str, Any]], from_date: str, to_date: str) -> List[SourceItem]:
+    """Normalize TickerTick items to SourceItem."""
+    normalized = []
+    for item in items:
+        date_str = item.get("date", "")
+        confidence = dates.get_date_confidence(date_str, from_date, to_date)
+        metadata = item.get("metadata", {})
+
+        normalized.append(SourceItem(
+            item_id=_make_id("tickertick", item.get("url", ""), item.get("title", "")),
+            source="tickertick",
+            title=item.get("title", ""),
+            body=item.get("body", ""),
+            url=item.get("url", ""),
+            author=item.get("author"),
+            container=item.get("author", "TickerTick"),
+            published_at=date_str,
+            date_confidence=confidence,
+            engagement=item.get("engagement", {}),
+            relevance_hint=item.get("relevance", 0.5),
+            why_relevant=item.get("why_relevant", ""),
+            snippet=item.get("body", "")[:200],
+            metadata=metadata,
+        ))
+    return normalized
+
+
+def normalize_bing_news(items: List[Dict[str, Any]], from_date: str, to_date: str) -> List[SourceItem]:
+    """Normalize Bing News items to SourceItem."""
+    normalized = []
+    for item in items:
+        date_str = item.get("date", "")
+        confidence = dates.get_date_confidence(date_str, from_date, to_date)
+        metadata = item.get("metadata", {})
+
+        normalized.append(SourceItem(
+            item_id=_make_id("bing_news", item.get("url", ""), item.get("title", "")),
+            source="bing_news",
+            title=item.get("title", ""),
+            body=item.get("body", ""),
+            url=item.get("url", ""),
+            author=item.get("author"),
+            container=item.get("author", "Bing News"),
+            published_at=date_str,
+            date_confidence=confidence,
+            engagement=item.get("engagement", {}),
+            relevance_hint=item.get("relevance", 0.5),
+            why_relevant=item.get("why_relevant", ""),
+            snippet=item.get("body", "")[:200],
+            metadata=metadata,
+        ))
+    return normalized
+
+
+def normalize_serpapi_news(items: List[Dict[str, Any]], from_date: str, to_date: str) -> List[SourceItem]:
+    """Normalize SerpAPI News items to SourceItem."""
+    normalized = []
+    for item in items:
+        date_str = item.get("date", "")
+        confidence = dates.get_date_confidence(date_str, from_date, to_date)
+        metadata = item.get("metadata", {})
+
+        normalized.append(SourceItem(
+            item_id=_make_id("serpapi_news", item.get("url", ""), item.get("title", "")),
+            source="serpapi_news",
+            title=item.get("title", ""),
+            body=item.get("body", ""),
+            url=item.get("url", ""),
+            author=item.get("author"),
+            container=item.get("author", "SerpAPI"),
+            published_at=date_str,
+            date_confidence=confidence,
+            engagement=item.get("engagement", {}),
+            relevance_hint=item.get("relevance", 0.5),
+            why_relevant=item.get("why_relevant", ""),
+            snippet=item.get("body", "")[:200],
+            metadata=metadata,
+        ))
+    return normalized
+
+
 NORMALIZERS = {
     "reddit": normalize_reddit,
     "hackernews": normalize_hackernews,
@@ -507,6 +589,9 @@ NORMALIZERS = {
     "stackexchange": normalize_stackexchange,
     "lemmy": normalize_lemmy,
     "devto": normalize_devto,
+    "tickertick": normalize_tickertick,
+    "bing_news": normalize_bing_news,
+    "serpapi_news": normalize_serpapi_news,
 }
 
 

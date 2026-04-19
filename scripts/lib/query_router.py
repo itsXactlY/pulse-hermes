@@ -30,10 +30,10 @@ _TYPE_PATTERNS = [
 # Optimal ordered source lists per query type
 TYPE_SOURCES: Dict[str, List[str]] = {
     "breaking_news": [
-        "news", "hackernews", "reddit", "bluesky", "web", "rss",
+        "news", "hackernews", "reddit", "bluesky", "web", "rss", "bing_news", "serpapi_news",
         "polymarket", "github", "youtube", "lobsters", "stackexchange",
         "devto", "lemmy", "arxiv", "openalex", "sem_scholar",
-        "manifold", "metaculus",
+        "manifold", "metaculus", "tickertick",
     ],
     "academic_deep": [
         "arxiv", "openalex", "sem_scholar", "hackernews", "reddit",
@@ -45,7 +45,7 @@ TYPE_SOURCES: Dict[str, List[str]] = {
         "polymarket", "manifold", "metaculus", "reddit", "hackernews",
         "web", "news", "bluesky", "arxiv", "openalex", "sem_scholar",
         "github", "youtube", "stackexchange", "lobsters", "rss",
-        "devto", "lemmy",
+        "devto", "lemmy", "tickertick", "bing_news", "serpapi_news",
     ],
     "technical_comparison": [
         "hackernews", "github", "stackoverflow", "reddit", "lobsters",
@@ -55,9 +55,9 @@ TYPE_SOURCES: Dict[str, List[str]] = {
     ],
     "sentiment_pulse": [
         "reddit", "bluesky", "hackernews", "news", "web",
-        "youtube", "lobsters", "lemmy", "devto", "rss",
+        "youtube", "lobsters", "lemmy", "devto", "rss", "bing_news", "serpapi_news",
         "polymarket", "manifold", "metaculus", "github",
-        "stackexchange", "arxiv", "openalex", "sem_scholar",
+        "stackexchange", "arxiv", "openalex", "sem_scholar", "tickertick",
     ],
 }
 

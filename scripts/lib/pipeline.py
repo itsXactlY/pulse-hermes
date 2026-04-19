@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from . import (
     adaptive_lookback as _adaptive_lb,
     arxiv as _arxiv,
+    bing_news as _bing_news,
     bluesky as _bluesky,
     cache as _cache,
     cluster as _cluster,
@@ -41,8 +42,10 @@ from . import (
     score as _score,
     self_learn as _self_learn,
     sem_scholar as _sem_scholar,
+    serpapi_news as _serpapi_news,
     stackexchange as _stackexchange,
     store as _store,
+    tickertick as _tickertick,
     ui as _ui,
     web_search as _web,
     youtube as _youtube,
@@ -81,6 +84,9 @@ SOURCE_MAP = {
     "stackexchange": _stackexchange,
     "lemmy": _lemmy,
     "devto": _devto,
+    "tickertick": _tickertick,
+    "bing_news": _bing_news,
+    "serpapi_news": _serpapi_news,
 }
 
 
@@ -149,6 +155,16 @@ def _retrieve_stream(
             items = _lemmy.search(search_query, from_date, to_date, depth=depth)
         elif source == "devto":
             items = _devto.search(search_query, from_date, to_date, depth=depth)
+        elif source == "tickertick":
+            items = _tickertick.search(search_query, from_date, to_date, depth=depth)
+        elif source == "bing_news":
+            items = _bing_news.search(search_query, config, from_date, to_date, depth=depth)
+        elif source == "serpapi_news":
+            key = config.get("SERPAPI_KEY")
+            if key:
+                items = _serpapi_news.search(search_query, key, from_date, to_date, depth=depth)
+            else:
+                items = []
         else:
             _source_log(f"Unknown source: {source}")
             items = []
