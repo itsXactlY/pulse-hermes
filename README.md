@@ -3,7 +3,7 @@
 
 > **⚠️ NOT MAINTAINED BY HUMANS. EVOLVED BY MACHINES.**
 
-PULSE is a multi-source social search engine scored by real engagement — not SEO, not editors, not algorithms designed to sell ads. It searches 15 platforms simultaneously and ranks by what real people actually engage with.
+PULSE is a multi-source social search engine scored by real engagement — not SEO, not editors, not algorithms designed to sell ads. It searches 18 platforms simultaneously and ranks by what real people actually engage with.
 
 The human built the floor. The agents building the cathedral.
 
@@ -52,7 +52,7 @@ Four specialized agents: Collector → Analyzer → Specialist → Synthesizer. 
 
 **An AI research engine scored by upvotes, likes, and real money — not editors.**
 
-Search Reddit. Hacker News. Polymarket. YouTube. GitHub. ArXiv. Lobsters. RSS. The web. News. Bluesky. Dev.to. Lemmy. OpenAlex. Semantic Scholar. StackExchange. Manifold. Metaculus. All at once.
+Search Reddit. Hacker News. Polymarket. YouTube. GitHub. ArXiv. Lobsters. RSS. The web. News. Bluesky. Dev.to. Lemmy. OpenAlex. Semantic Scholar. StackExchange. Manifold. Metaculus. Tickertick. Bing News. SerpAPI News. All at once.
 
 Score it all by what real people actually engage with. Rank it with Weighted Reciprocal Rank Fusion. Cluster the results thematically. Deliver a research briefing in seconds.
 
@@ -69,16 +69,22 @@ Google aggregates editors. PULSE searches people.
 | **ArXiv** | Academic papers. ML/AI research. Peer-reviewed signal. | No |
 | **Lobsters** | Curated tech links. Systems programming. Quality community. | No |
 | **RSS/Blogs** | Technical blogs. Engineering insights. Expert opinions. | No |
-| **GitHub** | PR velocity, top repos by stars, issues, release notes. | Token |
-| **Web** | Editorial coverage, blog comparisons. | Key |
-| **News** | NewsAPI articles from major publications. | Key |
+| **StackExchange** | Q&A from Stack Overflow and the SE network. Expert answers. | No |
 | **Bluesky** | Decentralized social. Growing alternative to X/Twitter. | No |
 | **Dev.to** | Developer blog posts. Low-barrier technical content. | No |
 | **Lemmy** | Decentralized Reddit alternative. Alternative community takes. | No |
 | **OpenAlex** | Open academic graph. 250M+ scholarly works. | No |
 | **Semantic Scholar** | Academic papers with citation data and recommendations. | No |
+| **Manifold** | Play-money prediction markets. Community forecasts. | No |
+| **Metaculus** | Forecasting community. Calibrated prediction track records. | No |
+| **Tickertick** | Curated news aggregation. Topic-based news feeds. | No |
+| **GitHub** | PR velocity, top repos by stars, issues, release notes. | Token |
+| **Web** | Editorial coverage, blog comparisons. | Key |
+| **News** | NewsAPI articles from major publications. | Key |
+| **Bing News** | Microsoft Bing News search results. | Key |
+| **Serper News** | Google News via Serper.dev API. | Key |
 
-15 sources. 9 work without any API keys.
+18 sources. 16 work without any API keys.
 
 ## Quick Start
 
@@ -163,7 +169,7 @@ Seven signals fused via Weighted Reciprocal Rank Fusion (RRF, k=60):
 | **Retentive Value** | 10% | Did this source help with similar topics before? |
 | **Cross-Source Confirmation** | 10% | Same content from 3+ sources = higher trust |
 
-Three-pass deduplication: URL exact → Content hash → Cosine similarity (bigram-accelerated).
+Four-pass deduplication: URL exact → Content hash → Bigram pre-filter → Cosine similarity.
 
 ## Architecture
 
@@ -188,18 +194,25 @@ scripts/
     ui.py                   # Live progress display
     setup.py                # First-run setup wizard
     config.py               # Environment management
-    query_router.py         # Query type classification + source routing (NEW)
-    adaptive_lookback.py    # Dynamic time windows (NEW)
-    iterative_retrieval.py  # Multi-round gap analysis (NEW)
-    trend_detector.py       # Velocity/spread/drift detection (NEW)
-    research_crew.py        # Multi-agent research pipeline (NEW)
+    query_router.py         # Query type classification + source routing
+    adaptive_lookback.py    # Dynamic time windows
+    iterative_retrieval.py  # Multi-round gap analysis
+    trend_detector.py       # Velocity/spread/drift detection
+    research_crew.py        # Multi-agent research pipeline
     relevance.py            # Token overlap + cosine similarity
     self_learn.py           # Self-learning source weights
     neural_memory.py        # Neural memory integration
-    # Sources (15):
+    filter.py               # Result filtering
+    raw_filter.py           # Raw data pre-filtering
+    http.py                 # HTTP client utilities
+    log.py                  # Structured logging
+    dates.py                # Date/time helpers
+    # Sources (18):
     reddit.py, hackernews.py, polymarket.py, youtube.py,
     github.py, web_search.py, news.py, arxiv.py, lobsters.py, rss.py,
-    bluesky.py, devto.py, lemmy.py, openalex.py, sem_scholar.py
+    bluesky.py, devto.py, lemmy.py, openalex.py, sem_scholar.py,
+    stackexchange.py, manifold.py, metaculus.py, tickertick.py,
+    bing_news.py, serpapi_news.py
 ```
 
 ## Output Modes
@@ -216,8 +229,8 @@ scripts/
 
 | Feature | mvanhorn/last30days | PULSE v4.0 |
 |---------|:-------------------:|:----------:|
-| Sources | 14+ | 15 |
-| Free sources (no keys) | 3 | 9 |
+| Sources | 14+ | 18 |
+| Free sources (no keys) | 3 | 16 |
 | Query Router | ✗ | ✓ (5-route auto-classification) |
 | Multi-Agent Crew | ✗ | ✓ (Collector→Analyzer→Specialist→Synthesizer) |
 | Iterative Retrieval | ✗ | ✓ (gap analysis, early stop) |
