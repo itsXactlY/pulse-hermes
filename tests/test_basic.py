@@ -133,10 +133,27 @@ def test_render():
     plan = schema.QueryPlan(intent="general", freshness_mode="relaxed", raw_topic="test",
                            subqueries=[schema.SubQuery(label="p", search_query="test", ranking_query="test", sources=["reddit"])],
                            source_weights={"reddit": 1.0})
+    item = schema.SourceItem(
+        item_id="item-1", source="reddit", title="Memory Finding", body="Finding body",
+        url="https://example.com/finding", published_at="2026-04-13",
+        snippet="AcmeMemory is being discussed by OpenAI users.",
+        engagement={"score": 42},
+    )
+    candidate = schema.Candidate(
+        candidate_id="cand-1", item_id="item-1", source="reddit", title="Memory Finding",
+        url="https://example.com/finding", snippet="AcmeMemory is being discussed by OpenAI users.",
+        subquery_labels=["p"], native_ranks={"reddit": 1}, local_relevance=0.9,
+        freshness=100, engagement=42, source_quality=0.75, rrf_score=0.1,
+        sources=["reddit"], source_items=[item], final_score=0.5, cluster_id="cluster-1",
+    )
+    cluster = schema.Cluster(
+        cluster_id="cluster-1", title="Memory Finding", candidate_ids=["cand-1"],
+        representative_ids=["cand-1"], sources=["reddit"], score=0.5,
+    )
     report = schema.Report(
         topic="Test Topic", range_from="2026-03-01", range_to="2026-04-13",
         generated_at="2026-04-13T00:00:00Z", query_plan=plan,
-        clusters=[], ranked_candidates=[], items_by_source={}, errors_by_source={},
+        clusters=[cluster], ranked_candidates=[candidate], items_by_source={"reddit": [item]}, errors_by_source={},
     )
 
     compact = render.render_compact(report)
@@ -153,7 +170,13 @@ def test_render():
     parsed = json.loads(j)
     assert parsed["topic"] == "Test Topic"
 
-    print("  ✓ render (compact, full, context, json)")
+    mem = json.loads(render.render_for_memory(report))
+    assert mem["schema"] == "pulse.for-memory.v1"
+    assert mem["counts"]["memories"] == 2
+    assert mem["memories"][0]["dedup_key"].startswith("pulse:")
+    assert mem["memories"][1]["kind"] == "finding"
+
+    print("  ✓ render (compact, full, context, json, for-memory)")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════════════════════
-# PULSE v0.0.1 — Hermes Agent Integration Installer
+# PULSE v0.0.4 — Hermes Agent Integration Installer
 # ══════════════════════════════════════════════════════════════════════════════
 #
 # Installs PULSE into the Hermes Agent harness:
@@ -55,7 +55,7 @@ info() { echo -e "  ${CYAN}→${NC} $1"; }
 
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}║  PULSE v0.0.2 — Hermes Agent Installer  ║${NC}"
+echo -e "${BOLD}║  PULSE v0.0.4 — Hermes Agent Installer  ║${NC}"
 echo -e "${BOLD}╚══════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -198,10 +198,12 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
 # PULSE Configuration — Optional API Keys
 # ═══════════════════════════════════════════════════════════════════
 #
-# Three sources work WITHOUT any keys:
-#   Reddit (public JSON), Hacker News (Algolia), Polymarket (Gamma)
+# Core sources work WITHOUT any keys:
+#   Reddit, Hacker News, Polymarket, YouTube, ArXiv, Lobsters, RSS,
+#   OpenAlex, Semantic Scholar, Manifold, Metaculus, Bluesky,
+#   StackExchange, Lemmy, Dev.to, Tickertick
 #
-# Add optional keys below to unlock more sources.
+# Add optional keys below to unlock broader web/news/GitHub coverage.
 # Or set them as environment variables — PULSE checks both.
 # ═══════════════════════════════════════════════════════════════════
 
@@ -241,22 +243,52 @@ fi
 echo ""
 echo -e "${BOLD}[6/6] Integration Verification${NC}"
 
-# Run diagnostics
-DIAG_OUTPUT=$("$PYTHON" "$PROJECT_DIR/scripts/pulse.py" --diagnose 2>/dev/null) || true
-if echo "$DIAG_OUTPUT" | grep -q '"available_sources"'; then
-    SOURCES=$(echo "$DIAG_OUTPUT" | "$PYTHON" -c "import sys,json; print(', '.join(json.load(sys.stdin)['available_sources']))" 2>/dev/null || echo "unknown")
-    ok "Engine operational — sources: $SOURCES"
-else
-    warn "Diagnostics returned unexpected output (non-fatal)"
+# Run diagnostics through the installed CLI when possible. The installer must
+# prove the public entry point works, not only that the source file imports.
+PULSE_CMD=("$PYTHON" "$PROJECT_DIR/scripts/pulse.py")
+if [[ -x "$SYMLINK" ]]; then
+    PULSE_CMD=("$SYMLINK")
 fi
 
-# Run unit tests
-TEST_OUTPUT=$("$PYTHON" "$PROJECT_DIR/tests/test_basic.py" 2>&1) || true
-if echo "$TEST_OUTPUT" | grep -q "All tests passed"; then
-    ok "Unit tests: 9/9 passed"
-else
-    warn "Some unit tests failed (run: python3 $PROJECT_DIR/tests/test_basic.py)"
+DIAG_OUTPUT=$("${PULSE_CMD[@]}" --diagnose 2>&1)
+DIAG_STATUS=$?
+if [[ $DIAG_STATUS -ne 0 ]]; then
+    fail "Diagnostics failed via ${PULSE_CMD[*]}"
+    echo "$DIAG_OUTPUT"
+    exit 1
 fi
+
+SOURCES=$(echo "$DIAG_OUTPUT" | "$PYTHON" -c "
+import sys, json
+payload = json.load(sys.stdin)
+sources = payload.get('available_sources')
+if not sources:
+    raise SystemExit('missing available_sources')
+print(', '.join(sources))
+" 2>&1) || {
+    fail "Diagnostics returned invalid JSON"
+    echo "$DIAG_OUTPUT"
+    exit 1
+}
+ok "Engine operational via ${PULSE_CMD[*]} — sources: $SOURCES"
+
+# Run unit tests. A broken test suite is an installer failure, not a warning.
+TEST_OUTPUT=$("$PYTHON" "$PROJECT_DIR/tests/test_basic.py" 2>&1)
+TEST_STATUS=$?
+if [[ $TEST_STATUS -ne 0 ]]; then
+    fail "Unit tests failed"
+    echo "$TEST_OUTPUT"
+    exit 1
+fi
+TEST_SUMMARY=$(echo "$TEST_OUTPUT" | "$PYTHON" -c "
+import re, sys
+text = sys.stdin.read()
+m = re.search(r'Results:\s*(\d+) passed,\s*(\d+) failed', text)
+if not m:
+    raise SystemExit('missing test summary')
+print(f'{m.group(1)} passed, {m.group(2)} failed')
+" 2>/dev/null || echo "passed")
+ok "Unit tests: $TEST_SUMMARY"
 
 # Verify Hermes skill discovery
 if [[ -f "$SKILLS_DIR/devops/pulse/SKILL.md" ]]; then
@@ -292,8 +324,10 @@ echo -e "    The skill is now discoverable by Hermes."
 echo -e "    Hermes can use skill_view('pulse') to load instructions."
 echo -e "    Or use pulse --emit=context to inject research into other tasks."
 echo ""
-echo -e "  ${CYAN}Free Sources (no keys needed):${NC}"
-echo -e "    Reddit · Hacker News · Polymarket"
+echo -e "  ${CYAN}No-Key Sources:${NC}"
+echo -e "    Reddit · Hacker News · Polymarket · YouTube · ArXiv · Lobsters · RSS"
+echo -e "    OpenAlex · Semantic Scholar · Manifold · Metaculus · Bluesky · StackExchange"
+echo -e "    Lemmy · Dev.to · Tickertick"
 echo ""
 echo -e "  ${YELLOW}NOTE: This is a proof-of-concept.${NC}"
 echo -e "  ${YELLOW}Hermes should evolve this into a fully autonomous system.${NC}"

@@ -276,6 +276,152 @@ def render_json(report: Report) -> str:
     return json.dumps(to_dict(report), indent=2, sort_keys=True, default=str)
 
 
+def _memory_slug(value: str) -> str:
+    import re
+    slug = re.sub(r"[^a-z0-9]+", "-", (value or "").lower()).strip("-")
+    return slug or "pulse"
+
+
+def _memory_entities(text: str, limit: int = 12) -> list[str]:
+    import re
+    candidates = []
+    for tok in re.findall(r"\b[A-Za-z][A-Za-z0-9_\-]{2,}\b", text or ""):
+        if tok[0].isupper() or any(ch.isdigit() for ch in tok) or re.search(r"[a-z][A-Z]", tok):
+            candidates.append(tok)
+    for phrase in re.findall(r"['\"]([^'\"]{3,80})['\"]", text or ""):
+        candidates.append(phrase.strip())
+    seen, out = set(), []
+    for ent in candidates:
+        key = ent.lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(ent)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _candidate_memory_payload(candidate: Candidate) -> dict:
+    evidence = []
+    urls = []
+    engagements = []
+    for item in candidate.source_items[:5]:
+        if item.url:
+            urls.append(item.url)
+        engagements.append(item.engagement or {})
+        evidence.append({
+            "source": item.source,
+            "title": item.title,
+            "url": item.url,
+            "published_at": item.published_at,
+            "container": item.container,
+            "snippet": (item.snippet or item.body or "")[:500],
+            "engagement": item.engagement,
+        })
+    text = "\n".join([candidate.title or "", candidate.snippet or ""] + [e.get("snippet", "") for e in evidence])
+    dedup_src = "|".join([candidate.url or "", candidate.title or "", candidate.source or ""])
+    import hashlib
+    dedup_key = hashlib.sha256(dedup_src.encode("utf-8", "ignore")).hexdigest()[:24]
+    salience = min(2.0, max(0.4, 0.75 + float(candidate.final_score or 0.0) * 0.15 + min(len(set(candidate.sources or [])), 5) * 0.08))
+    return {
+        "kind": "finding",
+        "dedup_key": f"pulse:{dedup_key}",
+        "label": f"pulse:{_memory_slug(candidate.source)}:{dedup_key[:10]}",
+        "title": candidate.title,
+        "content": (
+            f"PULSE finding: {candidate.title}\n"
+            f"Source: {candidate.source}\n"
+            f"URL: {candidate.url}\n"
+            f"Summary: {(candidate.snippet or '')[:700]}"
+        ).strip(),
+        "salience": round(salience, 3),
+        "entities": _memory_entities(text),
+        "source_urls": list(dict.fromkeys(urls or ([candidate.url] if candidate.url else []))),
+        "evidence": evidence,
+        "metadata": {
+            "candidate_id": candidate.candidate_id,
+            "source": candidate.source,
+            "sources": candidate.sources,
+            "final_score": candidate.final_score,
+            "engagement": candidate.engagement,
+            "engagements": engagements,
+            "cluster_id": candidate.cluster_id,
+        },
+    }
+
+
+def render_for_memory(report: Report, cluster_limit: int = 12, candidate_limit: int = 40) -> str:
+    """Render compact JSON designed for neural memory ingestion.
+
+    Shape is intentionally stable, dedup-friendly, and free of presentation text:
+    each memory has content, label, dedup_key, salience hints, entities, URLs,
+    and evidence metadata.
+    """
+    import hashlib
+    import json
+    candidate_by_id = {c.candidate_id: c for c in report.ranked_candidates}
+    memories = []
+
+    for cluster in report.clusters[:cluster_limit]:
+        candidates = [candidate_by_id[cid] for cid in cluster.representative_ids if cid in candidate_by_id]
+        source_urls = []
+        snippets = []
+        for c in candidates[:4]:
+            if c.url:
+                source_urls.append(c.url)
+            if c.snippet:
+                snippets.append(c.snippet[:300])
+        dedup_src = "|".join([report.topic, cluster.title, ",".join(sorted(cluster.sources))])
+        digest = hashlib.sha256(dedup_src.encode("utf-8", "ignore")).hexdigest()[:24]
+        content = (
+            f"PULSE cluster for {report.topic}: {cluster.title}\n"
+            f"Sources: {', '.join(cluster.sources)}\n"
+            f"Score: {cluster.score:.3f}\n"
+            f"Evidence: {' | '.join(snippets[:4])}"
+        ).strip()
+        memories.append({
+            "kind": "cluster",
+            "dedup_key": f"pulse:{digest}",
+            "label": f"pulse:{_memory_slug(report.topic)}:cluster:{digest[:10]}",
+            "title": cluster.title,
+            "content": content,
+            "salience": round(min(2.0, max(0.5, 0.8 + cluster.score * 0.12 + len(cluster.sources) * 0.08)), 3),
+            "entities": _memory_entities(content),
+            "source_urls": list(dict.fromkeys(source_urls)),
+            "metadata": {
+                "cluster_id": cluster.cluster_id,
+                "candidate_ids": cluster.candidate_ids,
+                "representative_ids": cluster.representative_ids,
+                "sources": cluster.sources,
+                "score": cluster.score,
+                "uncertainty": cluster.uncertainty,
+            },
+        })
+
+    for candidate in report.ranked_candidates[:candidate_limit]:
+        memories.append(_candidate_memory_payload(candidate))
+
+    payload = {
+        "schema": "pulse.for-memory.v1",
+        "source": "pulse-hermes",
+        "topic": report.topic,
+        "generated_at": report.generated_at,
+        "range_from": report.range_from,
+        "range_to": report.range_to,
+        "intent": getattr(report.query_plan, "intent", ""),
+        "topic_dedup_key": "pulse-topic:" + hashlib.sha256((report.topic or "").lower().encode()).hexdigest()[:16],
+        "counts": {
+            "clusters": len(report.clusters),
+            "ranked_candidates": len(report.ranked_candidates),
+            "memories": len(memories),
+        },
+        "memories": memories,
+        "errors_by_source": report.errors_by_source,
+        "warnings": report.warnings,
+    }
+    return json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n"
+
+
 def render_markdown(report: Report, cluster_limit: int = 10) -> str:
     """Render report as Markdown — suitable for saving, sharing, or posting."""
     candidate_by_id = {c.candidate_id: c for c in report.ranked_candidates}

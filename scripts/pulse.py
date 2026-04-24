@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("topic", nargs="*", default=[], help="Research topic")
     parser.add_argument("--emit", default="compact",
-                        choices=["compact", "json", "full", "context", "md"],
+                        choices=["compact", "json", "full", "context", "md", "for-memory"],
                         help="Output mode (default: compact)")
     parser.add_argument("--depth", default="default",
                         choices=["quick", "default", "deep"],
@@ -83,11 +83,13 @@ def save_output(report, emit: str, save_dir: str) -> Path:
     path = Path(save_dir).expanduser().resolve()
     path.mkdir(parents=True, exist_ok=True)
     slug = slugify(report.topic)
-    extension = "json" if emit == "json" else "md"
+    extension = "json" if emit in ("json", "for-memory") else "md"
     out_path = path / f"{slug}-pulse.{extension}"
 
     if emit == "json":
         content = render.render_json(report)
+    elif emit == "for-memory":
+        content = render.render_for_memory(report)
     elif emit == "full":
         content = render.render_full(report)
     elif emit == "md":
@@ -456,6 +458,8 @@ def main() -> int:
     # Render output
     if args.emit == "json":
         output = render.render_json(report)
+    elif args.emit == "for-memory":
+        output = render.render_for_memory(report)
     elif args.emit == "full":
         output = render.render_full(report)
     elif args.emit == "md":
