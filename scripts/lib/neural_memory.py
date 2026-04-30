@@ -1,36 +1,43 @@
-"""Neural Memory integration for PULSE.
+"""Neural Memory integration for PULSE — via MCP socket (post-rebrand).
 
 Provides three integration points:
-1. Pre-search: Recall past research context for the topic
-2. Post-search: Save findings to neural memory
-3. Clustering: Use neural memory for semantic grouping (future)
+  1. recall_context  — pre-search context lookup
+  2. save_findings   — post-search persistence
+  3. enhance_context — convenience wrapper that prepends recalled context
 
-Uses the hermes neural_remember/neural_recall tools when available.
-Falls back gracefully if neural memory is not installed.
+Talks to mazemaker via the MCP server at ~/.neural_memory/mcp.sock
+(see /home/alca/projects/neural-memory-mcp/mcp_local.py — Phase F dual-
+listener). Falls back to spawning mcp_local.py over stdio if the socket
+is missing.
+
+Replaces the previous subprocess-spawned approach which broke after the
+neural-memory-adapter → mazemaker rebrand (the `neural_memory` Python
+module no longer exists; `mazemaker` is the new name).
 """
 
-import json
-import subprocess
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from . import log
+from ._mcp_client import MCPClient
 
 
 def _source_log(msg: str):
     log.source_log("NeuralMem", msg)
 
 
-def _check_neural_memory() -> bool:
-    """Check if neural memory is available via hermes tools."""
+def _try_mcp(callable_, *args, **kwargs):
+    """Run an MCP-backed call, returning a default on any failure.
+
+    Pulse must never crash because memory is unreachable — this is a
+    nice-to-have layer. Errors get logged once, the user-visible flow
+    continues with empty results.
+    """
     try:
-        # Check if neural_memory module exists
-        result = subprocess.run(
-            ["python3", "-c", "import neural_memory; print('ok')"],
-            capture_output=True, text=True, timeout=10
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
+        with MCPClient(spawn_fallback=True) as mcp:
+            return callable_(mcp, *args, **kwargs)
+    except Exception as e:
+        _source_log(f"MCP call failed: {e}")
+        return None
 
 
 def recall_context(topic: str, limit: int = 5) -> List[Dict[str, Any]]:
@@ -38,97 +45,58 @@ def recall_context(topic: str, limit: int = 5) -> List[Dict[str, Any]]:
 
     Returns list of relevant memories that can inform the current search.
     """
-    if not _check_neural_memory():
+    def _do(mcp: MCPClient, t: str, n: int):
+        return mcp.call("neural_recall", {"query": t, "limit": n})
+
+    result = _try_mcp(_do, topic, limit)
+    if not result:
         return []
 
-    try:
-        # Use neural_memory CLI or Python API
-        safe_topic = topic.replace('"', '\\"')
-        script = (
-            'import neural_memory, json\n'
-            'nm = neural_memory.NeuralMemory()\n'
-            f'results = nm.recall("{safe_topic}", limit={limit})\n'
-            'for r in results:\n'
-            '    print(json.dumps({"content": r.get("content", ""), '
-            '"label": r.get("label", ""), "score": r.get("score", 0)}))'
-        )
-
-        result = subprocess.run(
-            ["python3", "-c", script],
-            capture_output=True, text=True, timeout=15
-        )
-
-        if result.returncode != 0:
-            return []
-
-        memories = []
-        for line in result.stdout.strip().split("\n"):
-            if line.strip():
-                try:
-                    memories.append(json.loads(line))
-                except json.JSONDecodeError:
-                    pass
-
-        if memories:
-            _source_log(f"Found {len(memories)} neural memories for '{topic}'")
-        return memories
-
-    except Exception as e:
-        _source_log(f"Neural recall failed: {e}")
-        return []
+    # Server returns either a list directly or a dict with 'memories'/'results' key
+    memories = result if isinstance(result, list) else \
+               result.get("memories") or result.get("results") or []
+    out: List[Dict[str, Any]] = []
+    for m in memories:
+        if isinstance(m, dict):
+            out.append({
+                "content": m.get("content", ""),
+                "label": m.get("label", ""),
+                "score": m.get("similarity", m.get("score", 0)),
+            })
+    if out:
+        _source_log(f"Found {len(out)} neural memories for '{topic}'")
+    return out
 
 
 def save_findings(topic: str, findings: List[Dict[str, Any]], limit: int = 10) -> bool:
-    """Save top findings to neural memory for future recall.
-
-    Only saves the top N findings to avoid noise.
-    """
-    if not _check_neural_memory():
+    """Save top findings to neural memory for future recall."""
+    if not findings:
         return False
 
-    try:
-        # Prepare summary
-        top_findings = findings[:limit]
-        summary_lines = [f"PULSE Research: {topic}"]
-        for i, f in enumerate(top_findings, 1):
-            title = f.get("title", "")[:100]
-            source = f.get("source", "unknown")
-            url = f.get("url", "")
-            summary_lines.append(f"{i}. [{source}] {title}")
-            if url:
-                summary_lines.append(f"   {url}")
+    top = findings[:limit]
+    summary_lines = [f"PULSE Research: {topic}"]
+    for i, f in enumerate(top, 1):
+        title = f.get("title", "")[:100]
+        source = f.get("source", "unknown")
+        url = f.get("url", "")
+        summary_lines.append(f"{i}. [{source}] {title}")
+        if url:
+            summary_lines.append(f"   {url}")
+    content = "\n".join(summary_lines)
+    label = f"pulse-{topic[:50].replace(' ', '-')}"
 
-        content = "\n".join(summary_lines)
-        safe_content = content.replace('"', '\\"').replace('\n', '\\n')
-        label = f"pulse-{topic[:50].replace(' ', '-')}"
+    def _do(mcp: MCPClient, c: str, l: str):
+        return mcp.call("neural_remember", {"content": c, "label": l})
 
-        script = (
-            'import neural_memory\n'
-            'nm = neural_memory.NeuralMemory()\n'
-            f'nm.remember(content="{safe_content}", label="{label}")\n'
-            'print("ok")'
-        )
-
-        result = subprocess.run(
-            ["python3", "-c", script],
-            capture_output=True, text=True, timeout=15
-        )
-
-        if result.returncode == 0:
-            _source_log(f"Saved {len(top_findings)} findings to neural memory")
-            return True
-
-    except Exception as e:
-        _source_log(f"Neural save failed: {e}")
-
+    result = _try_mcp(_do, content, label)
+    if result is not None:
+        _source_log(f"Saved {len(top)} findings to neural memory")
+        return True
     return False
 
 
 def enhance_context(topic: str, base_context: str) -> str:
-    """Enhance a research context with neural memory insights.
-
-    Returns the enhanced context string with neural memory findings prepended.
-    """
+    """Enhance a research context with neural memory insights."""
     memories = recall_context(topic, limit=3)
     if not memories:
         return base_context
@@ -140,5 +108,4 @@ def enhance_context(topic: str, base_context: str) -> str:
             lines.append(f"- {content}")
     lines.append("")
     lines.append(base_context)
-
     return "\n".join(lines)
