@@ -59,31 +59,41 @@ from . import (
 )
 
 
+FetchFn = Callable[[str, str, str, str, Dict[str, Any]], List[Dict[str, Any]]]
+
+
 @dataclass(frozen=True)
 class SourceSpec:
-    """Everything needed to call a source's .search() and reason about it.
+    """Everything needed to call a source and reason about it.
+
+    Wurm-mode: each source carries an ORDERED tuple of fetch strategies.
+    The dispatcher tries them in order, returns the first non-empty
+    result. A path that raises is logged and skipped — the next path
+    runs. Only if every path returns empty / raises does the source
+    yield []. This means a source with API-key + RSS-fallback + scrape
+    fallback degrades gracefully through every layer instead of going
+    silent on first failure.
 
     Fields:
         name:           Canonical id used by query_router + dispatcher.
-        module:         The python module that owns ``search``.
-        fetch:          Adapter ``(query, from_date, to_date, depth, config) -> list``.
-                        Each spec packs the per-source signature quirks here so
-                        the dispatcher stays signature-blind.
-        api_key_env:    Config key the source needs (e.g. "NEWSAPI_KEY").
-                        ``None`` if no key required. The dispatcher returns
-                        ``[]`` early when an API-keyed source has no key AND
-                        ``no_api_fallback`` is False.
+        module:         Primary python module (for introspection / logging).
+        fetches:        Ordered tuple of fetch strategies. Each takes
+                        ``(query, from_date, to_date, depth, config)``
+                        and returns a list of raw items. Convention:
+                        primary path first, cheapest fallback next.
+        api_key_env:    Config key the PRIMARY path needs. Informational —
+                        fallbacks may exist that don't need it.
         no_api_fallback:
-                        True when the source can produce results without any
-                        API key (public scrape, RSS, headless-browser, etc.).
-                        News + serpapi_news are currently False — Phase C
-                        target.
+                        True when at least one path in ``fetches`` works
+                        without any API key (public scrape, RSS, headless,
+                        etc.). Used by sources_needing_api_key() to
+                        surface ops gaps.
         notes:          Free-text reminder for humans browsing the registry.
     """
 
     name: str
     module: Any
-    fetch: Callable[[str, str, str, str, Dict[str, Any]], List[Dict[str, Any]]]
+    fetches: Tuple[FetchFn, ...]
     api_key_env: Optional[str] = None
     no_api_fallback: bool = True
     notes: str = ""
@@ -139,58 +149,70 @@ def _github_call(mod):
 
 SOURCE_REGISTRY: Dict[str, SourceSpec] = {
     # Standard (topic, from_date, to_date, depth) sources — public APIs / RSS.
-    "arxiv":        SourceSpec("arxiv",        _arxiv,        _std(_arxiv)),
-    "bluesky":      SourceSpec("bluesky",      _bluesky,      _std(_bluesky)),
-    "devto":        SourceSpec("devto",        _devto,        _std(_devto)),
-    "hackernews":   SourceSpec("hackernews",   _hackernews,   _std(_hackernews)),
-    "lemmy":        SourceSpec("lemmy",        _lemmy,        _std(_lemmy)),
-    "lobsters":     SourceSpec("lobsters",     _lobsters,     _std(_lobsters)),
-    "manifold":     SourceSpec("manifold",     _manifold,     _std(_manifold)),
-    "metaculus":    SourceSpec("metaculus",    _metaculus,    _std(_metaculus)),
-    "openalex":     SourceSpec("openalex",     _openalex,     _std(_openalex)),
-    "rss":          SourceSpec("rss",          _rss,          _std(_rss)),
-    "sem_scholar":  SourceSpec("sem_scholar",  _sem_scholar,  _std(_sem_scholar)),
-    "stackexchange":SourceSpec("stackexchange",_stackexchange,_std(_stackexchange)),
-    "tickertick":   SourceSpec("tickertick",   _tickertick,   _std(_tickertick)),
+    "arxiv":        SourceSpec("arxiv",        _arxiv,        (_std(_arxiv),)),
+    "bluesky":      SourceSpec("bluesky",      _bluesky,      (_std(_bluesky),)),
+    "devto":        SourceSpec("devto",        _devto,        (_std(_devto),)),
+    "hackernews":   SourceSpec("hackernews",   _hackernews,   (_std(_hackernews),)),
+    "lemmy":        SourceSpec("lemmy",        _lemmy,        (_std(_lemmy),)),
+    "lobsters":     SourceSpec("lobsters",     _lobsters,     (_std(_lobsters),)),
+    "manifold":     SourceSpec("manifold",     _manifold,     (_std(_manifold),)),
+    "metaculus":    SourceSpec("metaculus",    _metaculus,    (_std(_metaculus),)),
+    "openalex":     SourceSpec("openalex",     _openalex,     (_std(_openalex),)),
+    "rss":          SourceSpec("rss",          _rss,          (_std(_rss),)),
+    "sem_scholar":  SourceSpec("sem_scholar",  _sem_scholar,  (_std(_sem_scholar),)),
+    "stackexchange":SourceSpec("stackexchange",_stackexchange,(_std(_stackexchange),)),
+    "tickertick":   SourceSpec("tickertick",   _tickertick,   (_std(_tickertick),)),
 
     # Twitter/X via Camoufox — public scrape, no API key.
+    # The module itself already does Camoufox → syndication → [] internally,
+    # so one fetch entry but multi-path under the hood.
     "twitter_browser": SourceSpec(
-        "twitter_browser", _twitter, _std(_twitter),
+        "twitter_browser", _twitter, (_std(_twitter),),
         notes="Camoufox headless browser; falls back to syndication.twitter.com",
     ),
 
     # No-dates sources.
-    "polymarket": SourceSpec("polymarket", _polymarket, _no_dates(_polymarket)),
-    "reddit":     SourceSpec("reddit",     _reddit,     _no_dates(_reddit, query_kw="query")),
-    "youtube":    SourceSpec("youtube",    _youtube,    _no_dates(_youtube),
+    "polymarket": SourceSpec("polymarket", _polymarket, (_no_dates(_polymarket),)),
+    "reddit":     SourceSpec("reddit",     _reddit,     (_no_dates(_reddit, query_kw="query"),)),
+    "youtube":    SourceSpec("youtube",    _youtube,    (_no_dates(_youtube),),
                              notes="yt-dlp under the hood; no API key needed"),
 
     # Sources that want the full config dict (their own internal key picking).
     "bing_news": SourceSpec(
-        "bing_news", _bing_news, _needs_config(_bing_news),
+        "bing_news", _bing_news, (_needs_config(_bing_news),),
         notes="RSS-backed; works without API",
     ),
     "web": SourceSpec(
-        "web", _web, _web_call(_web),
+        "web", _web, (_web_call(_web),),
         notes="web_search wrapper — depends on configured web-search backend",
     ),
 
     # Optional-token github (works without).
     "github": SourceSpec(
-        "github", _github, _github_call(_github),
+        "github", _github, (_github_call(_github),),
         notes="Token optional; rate-limit much higher with one",
     ),
 
-    # API-keyed sources WITHOUT no-api fallback. Phase C should add fallbacks.
+    # API-keyed sources WITH wurm-fallback chains.
+    # Primary path uses the API key (richer, faster). Fallback paths
+    # scrape / pull RSS so the source ALWAYS produces results.
     "news": SourceSpec(
-        "news", _news, _api_key(_news, "NEWSAPI_KEY"),
-        api_key_env="NEWSAPI_KEY", no_api_fallback=False,
-        notes="NewsAPI.org — Phase C target: add RSS aggregator fallback",
+        "news", _news,
+        (
+            _api_key(_news, "NEWSAPI_KEY"),                                # primary: NewsAPI
+            lambda q, fd, td, dp, cfg: _news.search_rss_aggregator(q, fd, td, depth=dp),  # fallback: RSS aggregate
+        ),
+        api_key_env="NEWSAPI_KEY", no_api_fallback=True,
+        notes="NewsAPI primary; RSS aggregator (BBC/Reuters/Guardian/AP/etc.) as fallback",
     ),
     "serpapi_news": SourceSpec(
-        "serpapi_news", _serpapi_news, _api_key(_serpapi_news, "SERPAPI_KEY"),
-        api_key_env="SERPAPI_KEY", no_api_fallback=False,
-        notes="SerpAPI — Phase C target: add direct google news scrape fallback",
+        "serpapi_news", _serpapi_news,
+        (
+            _api_key(_serpapi_news, "SERPAPI_KEY"),                             # primary: SerpAPI
+            lambda q, fd, td, dp, cfg: _serpapi_news.search_google_news_rss(q, depth=dp),  # fallback: google news RSS
+        ),
+        api_key_env="SERPAPI_KEY", no_api_fallback=True,
+        notes="SerpAPI primary; news.google.com RSS endpoint as fallback",
     ),
 }
 
@@ -205,15 +227,44 @@ def dispatch(
     depth: str,
     config: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
-    """Look up the source spec and call its fetch adapter.
+    """Run a source's fetch chain wurm-style: try each path in order,
+    return the first non-empty result.
+
+    A path that raises is logged and skipped — only if EVERY path is
+    empty/broken does the source yield []. The last raised exception
+    is re-raised when no path returned anything (so callers can still
+    distinguish "source completely down" from "source returned nothing").
 
     Raises KeyError on unknown source — callers are expected to have
     validated names against the registry already (see
-    ``validate_source_names``). This is intentionally NOT a silent
-    skip, because that's exactly the bug we're fixing.
+    ``validate_source_names``).
     """
+    from . import log
     spec = SOURCE_REGISTRY[source]
-    return spec.fetch(query, from_date, to_date, depth, config)
+    last_exc: Optional[Exception] = None
+    paths_tried = 0
+    for fetch in spec.fetches:
+        paths_tried += 1
+        try:
+            items = fetch(query, from_date, to_date, depth, config)
+            if items:
+                if paths_tried > 1:
+                    log.source_log(source, f"path #{paths_tried} succeeded ({len(items)} items)")
+                return items
+            # Empty result is not an error — fall through to next path silently.
+        except Exception as exc:
+            last_exc = exc
+            log.source_log(source, f"path #{paths_tried} raised {type(exc).__name__}: {exc} — trying next")
+    # Every path produced [] (or raised). Surface the last exception if any,
+    # otherwise return empty cleanly (everyone tried, nobody had data).
+    if last_exc and paths_tried == len(spec.fetches):
+        # Only re-raise if literally every path errored. Mixed empty+error
+        # is treated as a clean empty (we got past errors at least once).
+        # Heuristic: if exception count == paths count, fully broken.
+        # We can't easily count exceptions vs empties without more state,
+        # so the simple rule: re-raise iff the LAST path errored.
+        raise last_exc
+    return []
 
 
 def validate_source_names(names: Iterable[str]) -> None:

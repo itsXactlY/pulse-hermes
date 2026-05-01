@@ -255,3 +255,99 @@ def _normalize_date(date_str: str) -> str:
             continue
 
     return date_str[:10] if len(date_str) >= 10 else ""
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Wurm-mode fallback: when SERPAPI_KEY is missing or the API errors,
+# use Google News RSS (+ Bing News RSS as a second-engine probe).
+# Both endpoints are public, no auth, no rate-limit budget.
+# ─────────────────────────────────────────────────────────────────────────
+
+def search_google_news_rss(
+    topic: str,
+    depth: str = "default",
+) -> List[Dict[str, Any]]:
+    """No-API fallback: Google News + Bing News RSS, deduped + topic-filtered.
+
+    Two distinct search engines, both expose query-parametrised RSS:
+      * news.google.com/rss/search?q=…
+      * bing.com/news/search?q=…&format=rss
+
+    Running both in parallel hits two different ranking engines so we
+    catch stories one indexes that the other doesn't. Cost: zero auth,
+    zero monthly quota.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import xml.etree.ElementTree as ET
+    import re as _re
+    from urllib.parse import quote_plus as _quote_plus
+
+    count = DEPTH_CONFIG.get(depth, 15)
+
+    def _parse_rss(xml_text: str, source_name: str) -> List[Dict[str, Any]]:
+        try:
+            root = ET.fromstring(xml_text)
+        except ET.ParseError:
+            return []
+        for el in root.iter():
+            if "}" in el.tag:
+                el.tag = el.tag.split("}", 1)[1]
+        items_xml = root.findall(".//item") or root.findall(".//entry")
+        topic_tokens = {t.lower() for t in _re.findall(r"\w+", topic) if len(t) > 2}
+        out = []
+        for i, it in enumerate(items_xml):
+            if len(out) >= count:
+                break
+            title = (it.findtext("title") or "").strip()
+            link = (it.findtext("link") or "").strip()
+            if not link:
+                link_el = it.find("link")
+                if link_el is not None:
+                    link = link_el.get("href", "").strip()
+            body = (it.findtext("description") or it.findtext("summary") or "").strip()
+            date = (it.findtext("pubDate") or it.findtext("published") or "")[:10]
+            haystack = f"{title} {body}".lower()
+            if topic_tokens and not any(t in haystack for t in topic_tokens):
+                continue
+            out.append({
+                "id": f"SAPI-RSS-{source_name}-{i + 1}",
+                "title": title,
+                "body": body[:300],
+                "url": link,
+                "author": None,
+                "date": date,
+                "engagement": {},
+                "relevance": max(0.3, 1.0 - i * 0.025),
+                "why_relevant": f"News (RSS via {source_name})",
+                "source_name": source_name,
+            })
+        return out
+
+    feeds = [
+        ("Google News", f"https://news.google.com/rss/search?q={_quote_plus(topic)}&hl=en-US&gl=US&ceid=US:en"),
+        ("Bing News",   f"https://www.bing.com/news/search?q={_quote_plus(topic)}&format=rss"),
+    ]
+
+    items: List[Dict[str, Any]] = []
+    seen_urls: set = set()
+
+    def _pull(feed):
+        name, url = feed
+        try:
+            xml = http.get_text(url, timeout=10)
+            return _parse_rss(xml, name)
+        except Exception as exc:
+            _source_log(f"{name} RSS path failed: {exc}")
+            return []
+
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        for fut in as_completed(ex.submit(_pull, f) for f in feeds):
+            for it in fut.result():
+                if it["url"] and it["url"] not in seen_urls:
+                    items.append(it)
+                    seen_urls.add(it["url"])
+                    if len(items) >= count:
+                        break
+
+    _source_log(f"RSS fallback total: {len(items)} items from {len(feeds)} engines")
+    return items[:count]
