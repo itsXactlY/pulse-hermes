@@ -136,3 +136,21 @@ class QueryRouter:
             if s not in result:
                 result.append(s)
         return result
+
+
+
+# ── Startup-time sanity ──────────────────────────────────────────────────
+# Catch typos in TYPE_SOURCES / _PROBE_SOURCES at module load instead of
+# letting them silently drop into the dispatcher's "unknown source" branch.
+# This is what kept twitter_browser broken for three days; never again.
+def _validate_source_registry() -> None:
+    from . import source_registry
+    all_names = set()
+    for lst in TYPE_SOURCES.values():
+        all_names.update(lst)
+    for lst in _PROBE_SOURCES.values():
+        all_names.update(lst)
+    source_registry.validate_source_names(all_names)
+
+
+_validate_source_registry()

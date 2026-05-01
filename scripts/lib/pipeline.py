@@ -11,45 +11,24 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from . import (
     adaptive_lookback as _adaptive_lb,
-    arxiv as _arxiv,
-    bing_news as _bing_news,
-    bluesky as _bluesky,
     cache as _cache,
     cluster as _cluster,
     config as _config,
     dates as _dates,
     dedupe as _dedupe,
-    devto as _devto,
     filter as _filter,
     fusion as _fusion,
-    github as _github,
-    hackernews as _hackernews,
-    lemmy as _lemmy,
-    lobsters as _lobsters,
     log,
-    manifold as _manifold,
-    metaculus as _metaculus,
     neural_memory as _neural_mem,
-    news as _news,
     normalize as _normalize,
-    openalex as _openalex,
     planner as _heuristic_planner,
     llm_planner as _llm_planner,
-    polymarket as _polymarket,
     query_router as _query_router,
-    reddit as _reddit,
-    rss as _rss,
     score as _score,
     self_learn as _self_learn,
-    sem_scholar as _sem_scholar,
-    serpapi_news as _serpapi_news,
-    stackexchange as _stackexchange,
+    source_registry as _registry,
     store as _store,
-    tickertick as _tickertick,
-    twitter_browser as _twitter,
     ui as _ui,
-    web_search as _web,
-    youtube as _youtube,
 )
 from .schema import (
     Candidate,
@@ -65,33 +44,6 @@ DEPTH_SETTINGS = {
     "deep": {"per_stream_limit": 20, "pool_limit": 60},
 }
 
-# Source dispatch map: source name -> module with .search()
-SOURCE_MAP = {
-    "reddit": _reddit,
-    "hackernews": _hackernews,
-    "polymarket": _polymarket,
-    "github": _github,
-    "web": _web,
-    "news": _news,
-    "youtube": _youtube,
-    "arxiv": _arxiv,
-    "lobsters": _lobsters,
-    "rss": _rss,
-    "openalex": _openalex,
-    "sem_scholar": _sem_scholar,
-    "manifold": _manifold,
-    "metaculus": _metaculus,
-    "bluesky": _bluesky,
-    "stackexchange": _stackexchange,
-    "lemmy": _lemmy,
-    "devto": _devto,
-    "tickertick": _tickertick,
-    "twitter_browser": _twitter,
-    "bing_news": _bing_news,
-    "serpapi_news": _serpapi_news,
-}
-
-
 def _source_log(msg: str):
     log.source_log("Pipeline", msg)
 
@@ -105,10 +57,16 @@ def _retrieve_stream(
     depth: str,
     date_range: Tuple[str, str],
 ) -> Tuple[List[Dict[str, Any]], None]:
-    """Retrieve items from a single source for a single subquery."""
+    """Retrieve items from a single source for a single subquery.
+
+    Source dispatch is fully delegated to ``source_registry.dispatch``.
+    Adding/renaming a source is now a one-line edit in source_registry.py;
+    typos surface as ImportError at module load via
+    ``validate_source_names``, not as silent zero-result fetches.
+    """
     from_date, to_date = date_range
 
-    # Check cache first
+    # Check cache first.
     cached = _cache.get(source, search_query, from_date, to_date)
     if cached is not None:
         return cached, None
@@ -116,72 +74,19 @@ def _retrieve_stream(
     _source_log(f"Fetching {source} for '{search_query}'")
 
     try:
-        if source == "reddit":
-            items = _reddit.search(search_query, depth=depth)
-        elif source == "hackernews":
-            items = _hackernews.search(search_query, from_date, to_date, depth=depth)
-        elif source == "polymarket":
-            items = _polymarket.search(search_query, depth=depth)
-        elif source == "github":
-            items = _github.search(search_query, from_date, to_date, depth=depth,
-                                   token=config.get("GITHUB_TOKEN"))
-        elif source == "web":
-            items = _web.search(search_query, config, depth=depth)
-        elif source == "news":
-            key = config.get("NEWSAPI_KEY")
-            if key:
-                items = _news.search(search_query, key, from_date, to_date, depth=depth)
-            else:
-                items = []
-        elif source == "youtube":
-            items = _youtube.search(search_query, depth=depth)
-        elif source == "arxiv":
-            items = _arxiv.search(search_query, from_date, to_date, depth=depth)
-        elif source == "lobsters":
-            items = _lobsters.search(search_query, from_date, to_date, depth=depth)
-        elif source == "rss":
-            items = _rss.search(search_query, from_date, to_date, depth=depth)
-        elif source == "openalex":
-            items = _openalex.search(search_query, from_date, to_date, depth=depth)
-        elif source == "sem_scholar":
-            items = _sem_scholar.search(search_query, from_date, to_date, depth=depth)
-        elif source == "manifold":
-            items = _manifold.search(search_query, from_date, to_date, depth=depth)
-        elif source == "metaculus":
-            items = _metaculus.search(search_query, from_date, to_date, depth=depth)
-        elif source == "bluesky":
-            items = _bluesky.search(search_query, from_date, to_date, depth=depth)
-        elif source == "stackexchange":
-            items = _stackexchange.search(search_query, from_date, to_date, depth=depth)
-        elif source == "lemmy":
-            items = _lemmy.search(search_query, from_date, to_date, depth=depth)
-        elif source == "devto":
-            items = _devto.search(search_query, from_date, to_date, depth=depth)
-        elif source == "tickertick":
-            items = _tickertick.search(search_query, from_date, to_date, depth=depth)
-        elif source == "twitter_browser":
-            items = _twitter.search(search_query, from_date, to_date, depth=depth)
-        elif source == "bing_news":
-            items = _bing_news.search(search_query, config, from_date, to_date, depth=depth)
-        elif source == "serpapi_news":
-            key = config.get("SERPAPI_KEY")
-            if key:
-                items = _serpapi_news.search(search_query, key, from_date, to_date, depth=depth)
-            else:
-                items = []
-        else:
-            _source_log(f"Unknown source: {source}")
-            items = []
-
-        # Cache the results
-        if items:
-            _cache.put(source, search_query, items, from_date, to_date)
-
-        return items, None
-
-    except Exception as e:
-        _source_log(f"Error fetching {source}: {e}")
+        items = _registry.dispatch(source, search_query, from_date, to_date, depth, config)
+    except KeyError:
+        # Defensive: shouldn't happen if validate_source_names ran on import.
+        _source_log(f"Unknown source: {source} (not in SOURCE_REGISTRY)")
+        return [], None
+    except Exception as exc:
+        _source_log(f"Error fetching {source}: {exc}")
         raise
+
+    # Cache only non-empty pulls.
+    if items:
+        _cache.put(source, search_query, items, from_date, to_date)
+    return items, None
 
 
 def _normalize_score_dedupe(
