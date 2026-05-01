@@ -46,6 +46,7 @@ from . import (
     stackexchange as _stackexchange,
     store as _store,
     tickertick as _tickertick,
+    twitter_browser as _twitter,
     ui as _ui,
     web_search as _web,
     youtube as _youtube,
@@ -85,6 +86,7 @@ SOURCE_MAP = {
     "lemmy": _lemmy,
     "devto": _devto,
     "tickertick": _tickertick,
+    "twitter_browser": _twitter,
     "bing_news": _bing_news,
     "serpapi_news": _serpapi_news,
 }
@@ -157,6 +159,8 @@ def _retrieve_stream(
             items = _devto.search(search_query, from_date, to_date, depth=depth)
         elif source == "tickertick":
             items = _tickertick.search(search_query, from_date, to_date, depth=depth)
+        elif source == "twitter_browser":
+            items = _twitter.search(search_query, from_date, to_date, depth=depth)
         elif source == "bing_news":
             items = _bing_news.search(search_query, config, from_date, to_date, depth=depth)
         elif source == "serpapi_news":
