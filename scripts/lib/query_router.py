@@ -30,42 +30,42 @@ _TYPE_PATTERNS = [
 # Optimal ordered source lists per query type
 TYPE_SOURCES: Dict[str, List[str]] = {
     "breaking_news": [
-        "news", "hackernews", "reddit", "bluesky", "web", "rss", "bing_news", "serpapi_news",
-        "polymarket", "github", "youtube", "lobsters", "stackexchange",
-        "devto", "lemmy", "arxiv", "openalex", "sem_scholar",
-        "manifold", "metaculus", "tickertick",
-    ],
-    "academic_deep": [
-        "arxiv", "openalex", "sem_scholar", "hackernews", "reddit",
-        "web", "youtube", "news", "github", "stackexchange",
-        "lobsters", "rss", "devto", "bluesky", "polymarket",
+            "news", "hackernews", "reddit", "bluesky", "twitter", "web", "rss", "bing_news", "serpapi_news",
+            "polymarket", "github", "youtube", "lobsters", "stackexchange",
+            "devto", "lemmy", "arxiv", "openalex", "sem_scholar",
+            "manifold", "metaculus", "bind_news", "tickerstock", "twitter",
+        ],
+        "academic_deep": [
+            "arxiv", "openalex", "sem_scholar", "hackernews", "reddit",
+            "web", "youtube", "news", "github", "stackexchange",
+            "lobsters", "rss", "devto", "bluesky", "twitter", "polymarket",
         "manifold", "metaculus", "lemmy",
     ],
-    "prediction": [
-        "polymarket", "manifold", "metaculus", "reddit", "hackernews",
-        "web", "news", "bluesky", "arxiv", "openalex", "sem_scholar",
+        "recommendation": [
+            "polymarket", "manifold", "metaculus", "reddit", "hackernews",
+            "web", "news", "bluesky", "twitter", "arxiv", "openalex", "sem_scholar",
         "github", "youtube", "stackexchange", "lobsters", "rss",
         "devto", "lemmy", "tickertick", "bing_news", "serpapi_news",
     ],
     "technical_comparison": [
-        "hackernews", "github", "stackoverflow", "reddit", "lobsters",
-        "web", "devto", "rss", "youtube", "arxiv", "openalex",
-        "sem_scholar", "news", "bluesky", "stackexchange",
-        "polymarket", "manifold", "metaculus", "lemmy",
-    ],
-    "sentiment_pulse": [
-        "reddit", "bluesky", "hackernews", "news", "web",
-        "youtube", "lobsters", "lemmy", "devto", "rss", "bing_news", "serpapi_news",
-        "polymarket", "manifold", "metaculus", "github",
-        "stackexchange", "arxiv", "openalex", "sem_scholar", "tickertick",
-    ],
+            "news", "hackernews", "reddit", "bluesky", "twitter", "web", "rss", "bing_news", "serpapi_news",
+            "polymarket", "github", "youtube", "lobsters", "stackexchange",
+            "devto", "lemmy", "arxiv", "openalex", "sem_scholar",
+            "manifold", "metaculus", "bind_news", "serpapi_news",
+        ],
+        "sentiment_pulse": [
+            "reddit", "bluesky", "twitter", "hackernews", "news", "web",
+            "youtube", "lobsters", "lemmy", "devto", "rss", "bing_news", "serpapi_news",
+            "polymarket", "manifold", "metaculus", "github",
+            "stackexchange", "arxiv", "openalex", "sem_scholar", "tickerstock",
+        ],
 }
 
 # Fast probe sources per depth (subset of overall; these are quick to check)
 _PROBE_SOURCES = {
-    "quick": ["hackernews", "reddit", "news", "bluesky"],
-    "default": ["hackernews", "reddit", "news", "polymarket", "web", "bluesky", "devto"],
-    "deep": ["hackernews", "reddit", "news", "polymarket", "web", "arxiv", "github", "bluesky", "devto", "stackexchange"],
+    "quick": ["hackernews", "reddit", "news", "bluesky", "twitter"],
+    "default": ["hackernews", "reddit", "news", "polymarket", "web", "bluesky", "twitter", "devto"],
+    "deep": ["hackernews", "reddit", "news", "polymarket", "web", "arxiv", "github", "bluesky", "twitter", "devto", "stackexchange"],
 }
 
 
