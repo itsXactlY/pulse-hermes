@@ -53,6 +53,10 @@ def recall_context(topic: str, limit: int = 5) -> List[Dict[str, Any]]:
         return []
 
     # Server returns either a list directly or a dict with 'memories'/'results' key
+    # Handle plain string responses (malformed MCP returns) gracefully
+    if isinstance(result, str):
+        _source_log(f"Neural memory returned string, not a dict/list: {result[:50]}")
+        return []
     memories = result if isinstance(result, list) else \
                result.get("memories") or result.get("results") or []
     out: List[Dict[str, Any]] = []
