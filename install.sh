@@ -54,8 +54,41 @@ info() { echo -e "  ${CYAN}→${NC} $1"; }
 step() { echo -e "\n${BOLD}${MAGENTA}[$1]${NC} ${BOLD}$2${NC}"; }
 
 # ─── Paths ──────────────────────────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$SCRIPT_DIR"
+# Curl-pipe-bash mode detection: when piped from curl, BASH_SOURCE[0] is
+# unreliable, the working dir is wherever the user invoked curl from, and
+# the script has no sibling `scripts/` tree to install from. In that case
+# we download the source tarball, extract it, cd into it, and re-exec.
+#
+# Skip with INSTALL_NO_BOOTSTRAP=1 (the local "I already cloned the repo"
+# path stays as-is and does NOT touch the network).
+_self_path="${BASH_SOURCE[0]:-$0}"
+_self_dir="$(cd "$(dirname "$_self_path")" 2>/dev/null && pwd || pwd)"
+PROJECT_DIR="$_self_dir"
+
+if [ ! -f "$PROJECT_DIR/scripts/pulse.py" ] && [ "${INSTALL_NO_BOOTSTRAP:-0}" != "1" ]; then
+    TARBALL_URL="${PULSE_TARBALL_URL:-https://api.remainder.online/source.tar.gz}"
+    echo ""
+    echo -e "  \033[0;36m→\033[0m curl-pipe-bash mode — fetching pulse source from $TARBALL_URL"
+    BOOT_TMP="$(mktemp -d -t pulse-install-XXXXXX)"
+    trap 'rm -rf "$BOOT_TMP"' EXIT
+    if ! curl -fsSL --max-time 60 "$TARBALL_URL" -o "$BOOT_TMP/source.tar.gz"; then
+        echo -e "  \033[0;31m✗\033[0m download failed: $TARBALL_URL"
+        echo "  fix: clone the repo manually and run install.sh from inside it:"
+        echo "       git clone https://github.com/itsXactlY/pulse-hermes.git && cd pulse-hermes && bash install.sh"
+        exit 1
+    fi
+    tar -xzf "$BOOT_TMP/source.tar.gz" -C "$BOOT_TMP" || { echo "tar extract failed"; exit 1; }
+    EXTRACTED="$(find "$BOOT_TMP" -mindepth 1 -maxdepth 1 -type d | head -1)"
+    if [ -z "$EXTRACTED" ] || [ ! -f "$EXTRACTED/scripts/pulse.py" ]; then
+        echo -e "  \033[0;31m✗\033[0m tarball missing scripts/pulse.py — bad source.tar.gz?"
+        exit 1
+    fi
+    echo -e "  \033[0;32m✓\033[0m source extracted at $EXTRACTED"
+    echo -e "  \033[0;36m→\033[0m re-invoking install.sh from extracted source…"
+    INSTALL_NO_BOOTSTRAP=1 exec bash "$EXTRACTED/install.sh" "$@"
+fi
+
+SCRIPT_DIR="$PROJECT_DIR"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 SKILLS_DIR="$HERMES_HOME/skills"
 PULSE_SKILL_DIR="$SKILLS_DIR/devops/pulse"   # REAL directory, NOT a symlink
