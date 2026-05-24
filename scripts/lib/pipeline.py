@@ -268,6 +268,26 @@ def run(
     # Apply pool limit
     candidates = candidates[:settings["pool_limit"]]
 
+    # ── WURM mode: recursive depth crawl ──────────────────────────────────
+    # depth='wurm' runs the normal pipeline first, then asks WormCrawler to
+    # follow URLs out of the top candidates for `max_rounds` rounds, with
+    # the hard caps and dig_value-driven prioritisation that live in
+    # scripts/lib/worm.py. The seed candidates are still in `candidates`;
+    # we append the new deeper ones and re-cluster over the union.
+    worm_stats = None
+    if depth == "wurm":
+        try:
+            from lib import worm as _worm
+            crawler = _worm.WormCrawler(progress=ui)
+            new_cands, worm_stats = crawler.crawl(candidates)
+            if new_cands:
+                _source_log(f"worm: +{len(new_cands)} deep candidates "
+                            f"across {worm_stats.rounds_completed} round(s) "
+                            f"in {worm_stats.elapsed_seconds}s")
+                candidates = candidates + new_cands
+        except Exception as exc:
+            _source_log(f"worm crawl failed (non-fatal): {exc}")
+
     # Clustering
     clusters = _cluster.cluster_candidates(candidates)
 
@@ -286,6 +306,14 @@ def run(
         items_by_source=bundle.items_by_source,
         errors_by_source=bundle.errors_by_source,
     )
+    if worm_stats is not None:
+        # Attach stats to the report for --emit json/context consumers.
+        # Plain dict to keep Report dataclass un-touched.
+        from dataclasses import asdict
+        try:
+            report.__dict__["worm_stats"] = asdict(worm_stats)
+        except Exception:
+            pass
 
     # Progress summary
     source_counts = {s: len(items) for s, items in bundle.items_by_source.items()}

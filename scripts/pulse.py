@@ -39,8 +39,13 @@ def build_parser() -> argparse.ArgumentParser:
                         choices=["compact", "json", "full", "context", "md", "for-memory"],
                         help="Output mode (default: compact)")
     parser.add_argument("--depth", default="default",
-                        choices=["quick", "default", "deep"],
-                        help="Research depth (default: default)")
+                        choices=["quick", "default", "deep", "wurm"],
+                        help="Research depth — 'wurm' enables recursive URL-following "
+                             "(use --worm-rounds / --worm-fetches to bound)")
+    parser.add_argument("--worm-rounds", type=int, default=None,
+                        help="Recursion depth in wurm mode (default 3 or $PULSE_WORM_MAX_ROUNDS)")
+    parser.add_argument("--worm-fetches", type=int, default=None,
+                        help="Hard cap on total sub-fetches across all rounds (default 500)")
     parser.add_argument("--sources", help="Comma-separated sources to search")
     parser.add_argument("--lookback", type=int, default=30,
                         help="Days to look back (default: 30)")
@@ -431,6 +436,14 @@ def main() -> int:
             sys.stderr.write(f"Saved to: {out_path}\n")
 
         return 0
+
+    # Apply --worm-rounds / --worm-fetches CLI overrides as env vars (the
+    # worm module reads them once at import) before launching the run.
+    if args.depth == "wurm":
+        if args.worm_rounds is not None:
+            os.environ["PULSE_WORM_MAX_ROUNDS"] = str(args.worm_rounds)
+        if args.worm_fetches is not None:
+            os.environ["PULSE_WORM_MAX_FETCHES"] = str(args.worm_fetches)
 
     # Run pipeline
     try:
