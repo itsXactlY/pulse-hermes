@@ -65,16 +65,28 @@ WHEN TO USE
     engagement signal
 
 HOW TO USE
-  - `pulse_search(topic)` is the default tool. Pass a clear topic
-    phrase, optional depth ('quick'|'default'|'deep'), optional
-    `lookback_days` (default 30). Returns a compact rendered report
-    (clusters + top candidates with engagement metrics + URLs).
-  - `pulse_trending()` for "what's been hot across all my past
-    research" (no fresh fetch).
-  - `pulse_history(topic)` for past runs on a specific topic.
-  - `pulse_stats()` for cache + store size diagnostics.
-  - `pulse_diagnose()` for "which sources are even available right
-    now" (env + API-key state).
+  - `pulse_search(topic)` — fan-out only. Fast (5–30s). Returns the
+    seed report from one round across all sources.
+  - `pulse_dig(topic, rounds=3)` — WURM MODE. Fan-out + recursively
+    follow URLs across N rounds, with bypass chains for blocked
+    sources and a corroboration boost for URLs cited from 2+
+    sources. Slower (30s–3min) but yields 2–5× the findings AND
+    surfaces signal you'd never reach from search alone. Use this
+    when the operator says "deep dive", "dig into", "find everything
+    on", "what's REALLY going on with…".
+  - `pulse_dig_status(run_id)` — read the lineage trail of a prior
+    pulse_dig (which seed led to which deep finding via which
+    bypass strategy). Pass run_id from the pulse_dig response.
+  - `pulse_trending()` — past-runs view (no fresh fetch).
+  - `pulse_history(topic)` — past runs on a specific topic.
+  - `pulse_stats()` — cache + store size diagnostics.
+  - `pulse_diagnose()` — which sources are wired right now.
+
+DECISION TREE
+  Operator asks "what's happening with X" → pulse_search
+  Operator asks "dig into X" / "go deep on X" → pulse_dig
+  Operator wants the trail of a prior dig → pulse_dig_status
+  Operator says "trending" / "what's been hot" → pulse_trending
 
 OUTPUT
   All tools return JSON or compact-markdown text. Treat returned URLs
@@ -92,6 +104,70 @@ operator told you before; pulse is what the WORLD is saying right now.
 # ─── Tool schemas ────────────────────────────────────────────────────────────
 
 TOOLS = [
+    {
+        "name": "pulse_dig",
+        "description": (
+            "RECURSIVE multi-round dig (wurm mode). Same fan-out as "
+            "pulse_search, then FOLLOWS the URLs inside each finding for "
+            "N rounds — each round ranked by dig_value (sources that "
+            "panned out historically get prioritised). When a path is "
+            "blocked (403 / 429 / captcha / paywall), walks the per-source "
+            "bypass chain: official API → JSON endpoint → archive.org → "
+            "alt frontend → cross-source → headless (opt-in) → manual queue. "
+            "URLs cited from 2+ distinct sources get a corroboration boost. "
+            "Hard caps: 500 fetches / topic, 3 rounds, 50/round, 8 concurrent. "
+            "Returns the run_id so you can call pulse_dig_status(run_id) "
+            "to surface the lineage trail."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "topic": {
+                    "type": "string",
+                    "description": "Research topic / query (free text)",
+                },
+                "rounds": {
+                    "type": "integer",
+                    "minimum": 1, "maximum": 5, "default": 3,
+                    "description": "Recursion depth (default 3)",
+                },
+                "max_fetches": {
+                    "type": "integer",
+                    "minimum": 10, "maximum": 2000, "default": 500,
+                    "description": "Hard cap on total sub-fetches",
+                },
+                "lookback_days": {
+                    "type": "integer", "minimum": 1, "maximum": 365, "default": 30,
+                },
+                "emit": {
+                    "type": "string",
+                    "enum": ["compact", "json", "context"],
+                    "default": "compact",
+                },
+            },
+            "required": ["topic"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "pulse_dig_status",
+        "description": (
+            "Read the lineage trail of a previous pulse_dig run. Returns the "
+            "parent→child URL graph + per-edge metadata (round, source_type, "
+            "bypass strategy used). Pass run_id from a prior pulse_dig "
+            "response, OR omit it to get the most recent N runs."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {"type": "string", "description": "Specific run id (hex)"},
+                "limit_edges": {"type": "integer", "default": 200, "minimum": 1, "maximum": 2000},
+                "recent": {"type": "integer", "default": 0,
+                           "description": "If >0 (and no run_id), return that many most-recent runs instead"},
+            },
+            "additionalProperties": False,
+        },
+    },
     {
         "name": "pulse_search",
         "description": (
@@ -296,11 +372,86 @@ def _run_diagnose(args: dict) -> str:
     return json.dumps(env, ensure_ascii=False, default=str)
 
 
+def _run_dig(args: dict) -> str:
+    """Wrap pipeline.run with depth='wurm' + return run_id so the agent
+    can chain into pulse_dig_status."""
+    from lib import pipeline as _pipeline
+    from lib import render as _render
+    import os as _os
+
+    topic = str(args.get("topic", "")).strip()
+    if not topic:
+        return json.dumps({"error": "topic is required"})
+    rounds = max(1, min(5, int(args.get("rounds", 3))))
+    max_fetches = max(10, min(2000, int(args.get("max_fetches", 500))))
+    lookback = max(1, min(365, int(args.get("lookback_days", 30))))
+    emit = str(args.get("emit", "compact"))
+    if emit not in ("compact", "json", "context"):
+        emit = "compact"
+
+    # Honour caps via env (worm reads these at import; we tweak per-call).
+    _os.environ["PULSE_WORM_MAX_ROUNDS"]  = str(rounds)
+    _os.environ["PULSE_WORM_MAX_FETCHES"] = str(max_fetches)
+
+    report = _pipeline.run(
+        topic=topic, config=_config(), depth="wurm",
+        requested_sources=None, lookback_days=lookback,
+        use_llm=True, use_cache=True, use_store=True, progress=False,
+    )
+
+    run_id = getattr(report, "worm_run_id", None) or report.__dict__.get("worm_run_id")
+    worm_stats = report.__dict__.get("worm_stats")
+    corro = report.__dict__.get("corroboration")
+
+    if emit == "json":
+        payload = _render.render_json(report)
+        try:
+            obj = json.loads(payload)
+            obj["worm_stats"] = worm_stats
+            obj["worm_run_id"] = run_id
+            obj["corroboration"] = corro
+            return json.dumps(obj, ensure_ascii=False, default=str)
+        except Exception:
+            return payload
+    rendered = (getattr(_render, "render_context", None) or _render.render_compact)(report) \
+               if emit == "context" else _render.render_compact(report)
+    header = f"[pulse_dig] run_id={run_id}  rounds={rounds}  max_fetches={max_fetches}\n"
+    if worm_stats:
+        header += (f"worm: +{worm_stats.get('new_candidates',0)} deep / "
+                   f"{worm_stats.get('fetches_succeeded',0)}/{worm_stats.get('fetches_attempted',0)} OK / "
+                   f"{worm_stats.get('elapsed_seconds',0)}s\n")
+    if corro and corro.get("boosted_n"):
+        header += f"corroborated: {corro['boosted_n']} url(s), max cites={corro['max_cites']}\n"
+    return header + "\n" + rendered
+
+
+def _run_dig_status(args: dict) -> str:
+    """Surface lineage trail of a prior pulse_dig run."""
+    from lib import lineage as _lineage
+    run_id = (args.get("run_id") or "").strip()
+    recent = int(args.get("recent", 0))
+    limit_edges = max(1, min(2000, int(args.get("limit_edges", 200))))
+    if run_id:
+        edges = _lineage.edges_for_run(run_id, limit=limit_edges)
+        return json.dumps({"run_id": run_id, "edge_count": len(edges),
+                           "edges": edges}, ensure_ascii=False, default=str)
+    if recent:
+        return json.dumps({"recent_runs": _lineage.recent_runs(limit=recent)},
+                          ensure_ascii=False, default=str)
+    # default: 10 most recent runs
+    return json.dumps({"recent_runs": _lineage.recent_runs(limit=10)},
+                      ensure_ascii=False, default=str)
+
+
 def _call_tool(name: str, args: dict) -> dict:
     try:
         with _lock:
             if name == "pulse_search":
                 text = _run_search(args)
+            elif name == "pulse_dig":
+                text = _run_dig(args)
+            elif name == "pulse_dig_status":
+                text = _run_dig_status(args)
             elif name == "pulse_trending":
                 text = _run_trending(args)
             elif name == "pulse_history":

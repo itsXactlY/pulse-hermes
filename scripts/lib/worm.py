@@ -110,16 +110,38 @@ class _DeepFetch:
 
 
 def _fetch_one(url: str, source_type: str, timeout: int = 15) -> _DeepFetch:
-    """Single-path fetch + parse. Phase 2 will wrap this with a bypass chain."""
-    from lib import http as _http
+    """Bypass-chain fetch + parse. Walks the per-source strategy ladder
+    via lib.bypass; honours politeness rate limits + robots.txt.
+
+    Falls back to lib.http.get_text only if bypass isn't importable
+    (defensive — should never happen since both ship together)."""
     try:
-        html = _http.get_text(url, timeout=timeout)
-    except Exception as exc:
-        return _DeepFetch(url=url, source_type=source_type, ok=False, error=str(exc)[:200])
+        from lib import bypass as _bypass
+    except Exception:
+        _bypass = None
+
+    if _bypass is not None:
+        res = _bypass.fetch_with_bypass(url, source_type=source_type)
+        if not res.ok:
+            return _DeepFetch(url=url, source_type=source_type, ok=False,
+                              error=f"{res.strategy}: {res.error or '?'}")
+        html = res.content
+        # Surface the actual URL we ended up reading (might be wayback /
+        # alt frontend) — useful for lineage tracking.
+        used_url = res.url_used or url
+    else:
+        from lib import http as _http
+        try:
+            html = _http.get_text(url, timeout=timeout)
+        except Exception as exc:
+            return _DeepFetch(url=url, source_type=source_type, ok=False,
+                              error=str(exc)[:200])
+        used_url = url
+
     title_m = _TITLE_RE.search(html)
     desc_m  = _META_DESC_RE.search(html)
     return _DeepFetch(
-        url=url,
+        url=used_url,
         source_type=source_type,
         title=(_strip_html(title_m.group(1), 200) if title_m else "").strip(),
         description=(unescape(desc_m.group(1)) if desc_m else "")[:500],
@@ -196,6 +218,7 @@ class WormCrawler:
         min_context: int = DEFAULTS["min_context"],
         engagement_inherit: float = DEFAULTS["engagement_inherit"],
         progress=None,
+        run_id: Optional[str] = None,   # set by pipeline; powers lineage trail
     ):
         self.max_rounds = max(1, int(max_rounds))
         self.max_fetches = max(1, int(max_fetches))
@@ -204,6 +227,7 @@ class WormCrawler:
         self.min_context = max(0, int(min_context))
         self.engagement_inherit = float(engagement_inherit)
         self.progress = progress
+        self.run_id = run_id
         self.stats = WormStats()
         self._seen_urls: set[str] = set()
 
@@ -292,6 +316,25 @@ class WormCrawler:
                 )
                 new_candidates.append(new_cand)
                 self.stats.new_candidates += 1
+                # Persist the lineage edge so /v1/runs/{id}/lineage + the
+                # 'watch it dig' panel can render this trail later.
+                if self.run_id:
+                    try:
+                        from lib import lineage as _lineage
+                        _lineage.record_edge(
+                            self.run_id,
+                            parent_url=parent.url or "",
+                            child_url=fetched.url,
+                            round_=round_idx,
+                            source_type=fetched.source_type,
+                            strategy_used="",   # bypass result strategy
+                                                # surfaces via http logs;
+                                                # plumbing it through the
+                                                # _DeepFetch shape is a
+                                                # Phase-3-cleanup follow-up.
+                        )
+                    except Exception:
+                        pass
         self._log(f"round {round_idx}: +{len(new_candidates)} new candidates "
                   f"({self.stats.fetches_succeeded}/{self.stats.fetches_attempted} ok)")
         return new_candidates

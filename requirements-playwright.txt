@@ -1,0 +1,14 @@
+# Optional opt-in extras for pulse — only needed if you want the
+# headless-browser bypass strategy. Install with:
+#
+#   pip install -r requirements-playwright.txt
+#   playwright install chromium
+#
+# Then enable in the operator env:
+#
+#   export PULSE_PLAYWRIGHT=1
+#
+# Without this, pulse stays stdlib-only and the headless strategy in
+# bypass.BYPASS_CHAINS is silently skipped.
+
+playwright>=1.50,<2.0
