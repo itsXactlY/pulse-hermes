@@ -268,41 +268,6 @@ def run(
     # Apply pool limit
     candidates = candidates[:settings["pool_limit"]]
 
-    # ── WURM mode: recursive depth crawl ──────────────────────────────────
-    # depth='wurm' runs the normal pipeline first, then asks WormCrawler
-    # to follow URLs out of the top candidates for `max_rounds` rounds.
-    # Lineage is persisted to ~/.config/pulse/lineage.db so the 'watch
-    # it dig' panel + the `pulse_dig_status` MCP tool can reconstruct
-    # the trail later. After the crawl, corroborate.boost mutates the
-    # final scores so URLs cited from 2+ distinct sources rise.
-    worm_stats = None
-    worm_run_id = None
-    corroborate_stats = None
-    if depth == "wurm":
-        try:
-            from lib import worm as _worm
-            from lib import lineage as _lineage
-            from lib import corroborate as _corroborate
-            worm_run_id = _lineage.new_run(topic=topic, depth=depth)
-            crawler = _worm.WormCrawler(progress=ui, run_id=worm_run_id)
-            new_cands, worm_stats = crawler.crawl(candidates)
-            if new_cands:
-                _source_log(f"worm: +{len(new_cands)} deep candidates "
-                            f"across {worm_stats.rounds_completed} round(s) "
-                            f"in {worm_stats.elapsed_seconds}s "
-                            f"(run_id={worm_run_id})")
-                candidates = candidates + new_cands
-            corroborate_stats = _corroborate.boost(candidates)
-            if corroborate_stats.get("boosted_n", 0):
-                _source_log(f"worm: corroboration boost on "
-                            f"{corroborate_stats['boosted_n']} candidate(s); "
-                            f"max cites={corroborate_stats['max_cites']}")
-            # Re-rank after the boost so the report reflects the new order.
-            candidates.sort(key=lambda c: float(c.final_score or 0.0), reverse=True)
-            _lineage.end_run(worm_run_id)
-        except Exception as exc:
-            _source_log(f"worm crawl failed (non-fatal): {exc}")
-
     # Clustering
     clusters = _cluster.cluster_candidates(candidates)
 
@@ -321,16 +286,6 @@ def run(
         items_by_source=bundle.items_by_source,
         errors_by_source=bundle.errors_by_source,
     )
-    if worm_stats is not None:
-        # Attach stats + lineage handle to the report for --emit json/
-        # context consumers. Plain dict to keep Report dataclass un-touched.
-        from dataclasses import asdict
-        try:
-            report.__dict__["worm_stats"] = asdict(worm_stats)
-            report.__dict__["worm_run_id"] = worm_run_id
-            report.__dict__["corroboration"] = corroborate_stats
-        except Exception:
-            pass
 
     # Progress summary
     source_counts = {s: len(items) for s, items in bundle.items_by_source.items()}
