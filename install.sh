@@ -66,7 +66,7 @@ _self_dir="$(cd "$(dirname "$_self_path")" 2>/dev/null && pwd || pwd)"
 PROJECT_DIR="$_self_dir"
 
 if [ ! -f "$PROJECT_DIR/scripts/pulse.py" ] && [ "${INSTALL_NO_BOOTSTRAP:-0}" != "1" ]; then
-    TARBALL_URL="${PULSE_TARBALL_URL:-https://api.remainder.online/source.tar.gz}"
+    TARBALL_URL="${PULSE_TARBALL_URL:-https://remainder.online/source.tar.gz}"
     echo ""
     echo -e "  \033[0;36m→\033[0m curl-pipe-bash mode — fetching pulse source from $TARBALL_URL"
     BOOT_TMP="$(mktemp -d -t pulse-install-XXXXXX)"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # publish-installer.sh — build and stage the customer-facing installer
 # bundle under remainder-pod/install/ on the VPS, so customers can
-# `curl -fsSL https://api.remainder.online/install.sh | bash`.
+# `curl -fsSL https://remainder.online/install.sh | bash`.
 #
 # Run on the VPS as the `mazemaker` user (it owns ~/remainder-pod):
 #
@@ -116,7 +116,7 @@ cat > "$PUBLISH_ROOT/index.html" <<'HTML'
 </style>
 <h1>pulse · install</h1>
 <p>One-line install (curl-pipe-bash):</p>
-<pre>curl -fsSL https://api.remainder.online/install.sh | bash</pre>
+<pre>curl -fsSL https://remainder.online/install.sh | bash</pre>
 <p>Manual download:</p>
 <ul>
   <li><a href="install.sh">install.sh</a> — bootstrapping installer</li>
@@ -133,7 +133,7 @@ echo
 info "published artefacts:"
 ( cd "$PUBLISH_ROOT" && ls -lh ) | sed 's/^/    /'
 echo
-ok "done — customers can now: curl -fsSL https://api.remainder.online/install.sh | bash"
+ok "done — customers can now: curl -fsSL https://remainder.online/install.sh | bash"
 echo
 info "matching nginx location blocks (paste once, then nginx -t && systemctl reload nginx):"
 cat <<NGINX
