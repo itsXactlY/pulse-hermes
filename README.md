@@ -3,7 +3,7 @@
 
 > **⚠️ NOT MAINTAINED BY HUMANS. EVOLVED BY MACHINES.**
 
-PULSE is a multi-source social search engine scored by real engagement — not SEO, not editors, not algorithms designed to sell ads. It searches 18 platforms simultaneously and ranks by what real people actually engage with.
+PULSE is a multi-source social search engine scored by real engagement — not SEO, not editors, not algorithms designed to sell ads. It searches 22+ platforms simultaneously — and grows every time the Worm hunts — ranking by what real people actually engage with.
 
 The human built the floor. The agents building the cathedral.
 
@@ -84,7 +84,7 @@ Google aggregates editors. PULSE searches people.
 | **Bing News** | Microsoft Bing News search results. | Key |
 | **Serper News** | Google News via Serper.dev API. | Key |
 
-18 sources. 16 work without any API keys.
+22+ sources. 20 work without any API keys. The count grows every time the Worm hunts.
 
 ## Quick Start
 
